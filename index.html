@@ -169,6 +169,24 @@
       <div class="verify-summary hidden" id="destVerifySummary"></div>
       <div class="links-list hidden" id="destVerifyResults"></div>
     </div>
+
+    <div class="panel">
+      <div class="panel-title">Geo Blocking</div>
+      <div class="meta" id="geoMeta"></div>
+      <label for="geoInput" style="margin-top:12px;">Paste country codes (2-letter ISO, one per line or comma-separated) or country names.</label>
+      <textarea id="geoInput" rows="8" placeholder="AF&#10;AL&#10;DZ&#10;or: Afghanistan, Albania, Algeria"></textarea>
+      <div class="row" style="margin-top:8px;">
+        <label style="margin:0;"><input type="radio" name="geoMode" value="add" checked style="width:auto;"> Add to existing</label>
+        <label style="margin:0;"><input type="radio" name="geoMode" value="replace" style="width:auto;"> Replace all</label>
+      </div>
+      <div class="actions">
+        <button id="geoApplyBtn">Apply Geo Blocking</button>
+        <button class="danger" id="geoClearBtn">Clear All Blocked</button>
+        <button class="ghost" id="geoShowBtn">Show currently blocked</button>
+      </div>
+      <div class="log hidden" id="geoLog"></div>
+      <div class="links-list hidden" id="geoList"></div>
+    </div>
   </div>
 
   <div class="tab-panel hidden" data-panel="links">
@@ -393,6 +411,7 @@
       $('toggleDest').classList.remove('hidden');
       $('copyDest').classList.remove('hidden');
       renderDestList();
+      updateGeoMeta();
     } catch (e) {
       $('pageMeta').innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}${e.status===401?' (JWT expired?)':''}</span>`;
     }
@@ -508,6 +527,143 @@
     log($('destDelLog'), `Done. Deleted: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
     $('destDelBtn').disabled = false;
     await loadDestPage();
+  });
+
+  // ---- Geo blocking ----
+  const COUNTRY_NAME_TO_CODE = {
+    "afghanistan":"AF","albania":"AL","algeria":"DZ","argentina":"AR","armenia":"AM","aruba":"AW",
+    "azerbaijan":"AZ","bahrain":"BH","bangladesh":"BD","barbados":"BB","belize":"BZ","benin":"BJ",
+    "bhutan":"BT","bolivia":"BO","bosnia & herzegovina":"BA","bosnia and herzegovina":"BA","botswana":"BW",
+    "brazil":"BR","brunei":"BN","burkina faso":"BF","burundi":"BI","cambodia":"KH","cameroon":"CM",
+    "cape verde":"CV","cabo verde":"CV","cayman islands":"KY","central african republic":"CF","chad":"TD",
+    "chile":"CL","china":"CN","colombia":"CO","comoros":"KM","congo - brazzaville":"CG","congo":"CG",
+    "congo - kinshasa":"CD","congo (drc)":"CD","costa rica":"CR","côte d'ivoire":"CI","cote d'ivoire":"CI",
+    "ivory coast":"CI","cuba":"CU","curaçao":"CW","curacao":"CW","djibouti":"DJ","dominica":"DM",
+    "dominican republic":"DO","ecuador":"EC","egypt":"EG","el salvador":"SV","equatorial guinea":"GQ",
+    "eritrea":"ER","estonia":"EE","eswatini":"SZ","ethiopia":"ET","fiji":"FJ","french guiana":"GF",
+    "french polynesia":"PF","gabon":"GA","gambia":"GM","georgia":"GE","ghana":"GH","greenland":"GL",
+    "grenada":"GD","guadeloupe":"GP","guam":"GU","guatemala":"GT","guinea":"GN","guinea-bissau":"GW",
+    "guyana":"GY","haiti":"HT","honduras":"HN","hong kong sar china":"HK","hong kong":"HK","india":"IN",
+    "indonesia":"ID","iran":"IR","iraq":"IQ","jamaica":"JM","jordan":"JO","kazakhstan":"KZ","kenya":"KE",
+    "kuwait":"KW","kyrgyzstan":"KG","laos":"LA","latvia":"LV","lebanon":"LB","liberia":"LR","libya":"LY",
+    "lithuania":"LT","madagascar":"MG","malawi":"MW","malaysia":"MY","maldives":"MV","mali":"ML",
+    "malta":"MT","mauritania":"MR","mauritius":"MU","mayotte":"YT","micronesia":"FM","moldova":"MD",
+    "mongolia":"MN","montenegro":"ME","montserrat":"MS","morocco":"MA","mozambique":"MZ",
+    "myanmar (burma)":"MM","myanmar":"MM","burma":"MM","namibia":"NA","nepal":"NP","nicaragua":"NI",
+    "niger":"NE","nigeria":"NG","north korea":"KP","north macedonia":"MK","northern mariana islands":"MP",
+    "oman":"OM","pakistan":"PK","palau":"PW","palestinian territories":"PS","palestine":"PS","panama":"PA",
+    "papua new guinea":"PG","paraguay":"PY","peru":"PE","philippines":"PH","puerto rico":"PR","qatar":"QA",
+    "réunion":"RE","reunion":"RE","russia":"RU","rwanda":"RW","samoa":"WS","san marino":"SM",
+    "são tomé & príncipe":"ST","sao tome & principe":"ST","saudi arabia":"SA","senegal":"SN",
+    "seychelles":"SC","sierra leone":"SL","sint maarten":"SX","slovakia":"SK","slovenia":"SI",
+    "solomon islands":"SB","somalia":"SO","south africa":"ZA","south sudan":"SS","sri lanka":"LK",
+    "st. kitts & nevis":"KN","saint kitts and nevis":"KN","st. lucia":"LC","saint lucia":"LC",
+    "st. vincent & grenadines":"VC","saint vincent and the grenadines":"VC","sudan":"SD","suriname":"SR",
+    "taiwan":"TW","tajikistan":"TJ","tanzania":"TZ","thailand":"TH","timor-leste":"TL","togo":"TG",
+    "tonga":"TO","trinidad & tobago":"TT","trinidad and tobago":"TT","tunisia":"TN","türkiye":"TR",
+    "turkiye":"TR","turkey":"TR","turkmenistan":"TM","turks & caicos islands":"TC","turks and caicos islands":"TC",
+    "u.s. virgin islands":"VI","us virgin islands":"VI","uganda":"UG","ukraine":"UA",
+    "united arab emirates":"AE","uae":"AE","uruguay":"UY","uzbekistan":"UZ","vanuatu":"VU",
+    "venezuela":"VE","vietnam":"VN","yemen":"YE","zambia":"ZM","zimbabwe":"ZW",
+    "angola":"AO"
+  };
+
+  function parseCountryLines(text) {
+    const tokens = text.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+    const seen = new Set(), out = [], unknown = [];
+    for (const t of tokens) {
+      let code = null;
+      if (/^[A-Za-z]{2}$/.test(t)) code = t.toUpperCase();
+      else {
+        const norm = t.toLowerCase().replace(/\s+/g, ' ').trim();
+        code = COUNTRY_NAME_TO_CODE[norm] || null;
+      }
+      if (code) { if (!seen.has(code)) { seen.add(code); out.push(code); } }
+      else unknown.push(t);
+    }
+    return { codes: out, unknown };
+  }
+
+  function updateGeoMeta() {
+    if (!destPageData) { $('geoMeta').innerHTML = ''; return; }
+    const blocked = destPageData.blockedCountries || [];
+    $('geoMeta').innerHTML = `<span>Currently blocked: <b>${blocked.length}</b> countries</span>`;
+  }
+
+  async function patchPageBlockedCountries(newBlocked) {
+    const body = {
+      name: destPageData.name,
+      layoutConfig: destPageData.layoutConfigJson ? JSON.parse(destPageData.layoutConfigJson) : { cloakLinks: true, maxCloaking: false },
+      blockedCountries: newBlocked,
+      fakePreviewEnabled: destPageData.fakePreviewEnabled ?? true,
+      ogTitle: destPageData.ogTitle ?? null,
+      ogDescription: destPageData.ogDescription ?? null,
+      ogImageUrl: destPageData.ogImageUrl ?? null,
+    };
+    return await apiInternal(`/organizations/${destOrgId}/link-pages/${destPageId}`, {
+      method: 'PATCH', body: JSON.stringify(body),
+    });
+  }
+
+  $('geoApplyBtn').addEventListener('click', async () => {
+    clearLog($('geoLog'));
+    if (!destPageData) return log($('geoLog'), 'Load a page first.', 'err');
+    const { codes, unknown } = parseCountryLines($('geoInput').value);
+    if (!codes.length && !unknown.length) return log($('geoLog'), 'Nothing parsed.', 'err');
+    if (unknown.length) unknown.forEach(u => log($('geoLog'), `UNKNOWN  "${u}" (not a valid code or known name)`, 'skip'));
+    if (!codes.length) return log($('geoLog'), 'No valid country codes.', 'err');
+
+    const mode = document.querySelector('input[name="geoMode"]:checked').value;
+    const existing = new Set(destPageData.blockedCountries || []);
+    let newBlocked;
+    if (mode === 'add') {
+      const added = codes.filter(c => !existing.has(c));
+      newBlocked = Array.from(new Set([...(destPageData.blockedCountries || []), ...codes])).sort();
+      log($('geoLog'), `Mode: ADD · Parsed: ${codes.length} · Already blocked: ${codes.length - added.length} · Newly blocked: ${added.length}`, 'info');
+    } else {
+      newBlocked = Array.from(new Set(codes)).sort();
+      log($('geoLog'), `Mode: REPLACE · Was: ${existing.size} blocked · Will be: ${newBlocked.length} blocked`, 'info');
+    }
+
+    if (!confirm(`Apply geo blocking? ${newBlocked.length} countries will be blocked.`)) return;
+    $('geoApplyBtn').disabled = true;
+    try {
+      const updated = await patchPageBlockedCountries(newBlocked);
+      destPageData.blockedCountries = updated.blockedCountries || newBlocked;
+      log($('geoLog'), `OK  Now blocking ${destPageData.blockedCountries.length} countries.`, 'ok');
+      updateGeoMeta();
+    } catch (e) {
+      log($('geoLog'), `FAIL  ${e.message}${e.status===401?' (JWT expired)':''}`, 'err');
+    }
+    $('geoApplyBtn').disabled = false;
+  });
+
+  $('geoClearBtn').addEventListener('click', async () => {
+    if (!destPageData) return alert('Load a page first.');
+    if (!confirm('Clear ALL blocked countries?')) return;
+    clearLog($('geoLog'));
+    $('geoClearBtn').disabled = true;
+    try {
+      const updated = await patchPageBlockedCountries([]);
+      destPageData.blockedCountries = updated.blockedCountries || [];
+      log($('geoLog'), 'OK  All countries unblocked.', 'ok');
+      updateGeoMeta();
+    } catch (e) {
+      log($('geoLog'), `FAIL  ${e.message}${e.status===401?' (JWT expired)':''}`, 'err');
+    }
+    $('geoClearBtn').disabled = false;
+  });
+
+  $('geoShowBtn').addEventListener('click', () => {
+    if (!destPageData) return alert('Load a page first.');
+    const el = $('geoList');
+    el.classList.toggle('hidden');
+    if (el.classList.contains('hidden')) { $('geoShowBtn').textContent = 'Show currently blocked'; return; }
+    $('geoShowBtn').textContent = 'Hide blocked list';
+    const blocked = (destPageData.blockedCountries || []).slice().sort();
+    el.innerHTML = blocked.length
+      ? blocked.map(c => `<div class="link-item"><span>${escapeHtml(c)}</span></div>`).join('')
+      : '<div class="link-item"><span>No countries blocked.</span></div>';
   });
 
   $('destVerifyBtn').addEventListener('click', () => {
