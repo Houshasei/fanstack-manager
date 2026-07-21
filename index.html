@@ -144,9 +144,8 @@
         </div>
       </details>
       <div class="meta" id="pageMeta"></div>
-      <div class="links-list hidden" id="destList"></div>
+      <div class="links-list" id="destList"></div>
       <div class="actions">
-        <button class="ghost hidden" id="toggleDest">Show current destinations</button>
         <button class="ghost hidden" id="copyDest">Copy all URLs</button>
       </div>
     </div>
@@ -194,6 +193,7 @@
       </div>
       <div class="actions">
         <button id="geoApplyBtn">Apply Geo Blocking</button>
+        <button class="ghost" id="geoPresetBtn">Load Preset (164 countries)</button>
         <button class="danger" id="geoClearBtn">Clear All Blocked</button>
         <button class="ghost" id="geoShowBtn">Show currently blocked</button>
       </div>
@@ -485,10 +485,10 @@
         <span>Destinations: <b>${items.length}</b></span>
         <span>Type: <b>${escapeHtml(destPageData.pageType || 'direct')}</b></span>
       `;
-      $('toggleDest').classList.remove('hidden');
       $('copyDest').classList.remove('hidden');
       renderDestList();
       updateGeoMeta();
+      clearAllInputs();
     } catch (e) {
       $('pageMeta').innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}${e.status===401?' (JWT expired?)':''}</span>`;
     }
@@ -510,10 +510,10 @@
         <span>Destinations: <b>${items.length}</b></span>
         <span>Type: <b>${escapeHtml(destPageData.pageType || 'direct')}</b></span>
       `;
-      $('toggleDest').classList.remove('hidden');
       $('copyDest').classList.remove('hidden');
       renderDestList();
       updateGeoMeta();
+      clearAllInputs();
     } catch (e) {
       $('pageMeta').innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}${e.status===401?' (JWT expired?)':''}</span>`;
     }
@@ -562,10 +562,12 @@
     });
   }
 
-  $('toggleDest').addEventListener('click', () => {
-    $('destList').classList.toggle('hidden');
-    $('toggleDest').textContent = $('destList').classList.contains('hidden') ? 'Show current destinations' : 'Hide current destinations';
-  });
+  function clearAllInputs() {
+    ['destAddInput','destDelInput','destVerifyInput','geoInput'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+    ['destAddLog','destDelLog','geoLog'].forEach(id => { const el = $(id); if (el) clearLog(el); });
+    ['destVerifySummary','destVerifyResults','geoList'].forEach(id => { const el = $(id); if (el) { el.classList.add('hidden'); el.innerHTML = ''; } });
+    $('geoShowBtn').textContent = 'Show currently blocked';
+  }
 
   $('copyDest').addEventListener('click', () => {
     const text = (destPageData?.items || []).map(i => i.url).join('\n');
@@ -738,6 +740,13 @@
       method: 'PATCH', body: JSON.stringify(body),
     });
   }
+
+  const GEO_PRESET_CODES = ["AF","AL","DZ","AR","AM","AW","AZ","BH","BD","BB","BZ","BJ","BT","BO","BA","BW","BR","BN","BF","BI","KH","CM","CV","KY","CF","TD","CL","CN","CO","KM","CG","CD","CR","CI","CU","CW","DJ","DM","DO","EC","EG","SV","GQ","ER","EE","SZ","ET","FJ","GF","PF","GA","GM","GE","GH","GL","GD","GP","GU","GT","GN","GW","GY","HT","HN","HK","IN","ID","IR","IQ","JM","JO","KZ","KE","KW","KG","LA","LV","LB","LR","LY","LT","MG","MW","MY","MV","ML","MT","MR","MU","YT","FM","MD","MN","ME","MS","MA","MZ","MM","NA","NP","NI","NE","NG","KP","MK","MP","OM","PK","PW","PS","PA","PG","PY","PE","PH","PR","QA","RE","RU","RW","WS","SM","ST","SA","SN","SC","SL","SX","SK","SI","SB","SO","ZA","SS","LK","KN","LC","VC","SD","SR","TW","TJ","TZ","TH","TL","TG","TO","TT","TN","TR","TM","TC","VI","UG","UA","AE","UY","UZ","VU","VE","VN","YE","ZM","ZW"];
+
+  $('geoPresetBtn').addEventListener('click', () => {
+    $('geoInput').value = GEO_PRESET_CODES.join('\n');
+    flash($('geoPresetBtn'), 'Loaded ✓ (' + GEO_PRESET_CODES.length + ')');
+  });
 
   $('geoApplyBtn').addEventListener('click', async () => {
     clearLog($('geoLog'));
