@@ -105,60 +105,53 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title">Refresh Token (Auto-refreshing, ~14 day lifespan)</div>
-      <label for="refreshTokenInput">Paste once. The app will auto-refresh your JWT before every call. Rotates every use (~14 days validity per rotation).</label>
-      <input type="password" id="refreshTokenInput" placeholder="0786768606184264BC452767..." autocomplete="off">
-      <div class="actions">
-        <button id="saveRefresh">Save Refresh Token</button>
-        <button class="ghost" id="testRefresh">Test</button>
-        <button class="ghost" id="clearRefresh">Clear</button>
-      </div>
-      <details style="margin-top:12px;">
-        <summary>How to get the refresh token</summary>
-        <div class="hint">
-          1. Log into <a href="https://fanstack.io" target="_blank">fanstack.io</a>.<br>
-          2. Open DevTools (F12) → <b>Application</b> tab (Chrome) or <b>Storage</b> tab (Firefox).<br>
-          3. Under <b>Cookies</b> → <code>https://fanstack.io</code>, find <code>fanstack.refresh_token</code>.<br>
-          4. Copy the <b>Value</b> and paste here.<br><br>
-          <b>Caveat:</b> each refresh rotates this token. If you're actively using fanstack.io in another tab and the app auto-refreshes, your fanstack.io tab may get logged out (you'll just need to re-login there and grab a fresh refresh token if you want auto-refresh to keep working).
+      <div class="panel-title">Advanced / Manual Overrides</div>
+      <div class="hint" style="margin-bottom:8px;">If Log In worked, you don't need anything below. These are fallbacks for Google-login users or when auto-refresh chain breaks.</div>
+
+      <details>
+        <summary>Refresh token (paste manually)</summary>
+        <div class="hint" style="margin-top:8px;">
+          <label for="refreshTokenInput">Paste once. App auto-refreshes JWT before every call. Rotates each use (~14 days per rotation).</label>
+          <input type="password" id="refreshTokenInput" placeholder="0786768606184264BC452767..." autocomplete="off">
+          <div class="actions">
+            <button id="saveRefresh">Save</button>
+            <button class="ghost" id="testRefresh">Test</button>
+            <button class="ghost" id="clearRefresh">Clear</button>
+          </div>
+          <div style="margin-top:8px;">
+            <b>How to get it:</b> DevTools (F12) → Application → Cookies → <code>https://fanstack.io</code> → find <code>fanstack.refresh_token</code> → copy Value.
+          </div>
         </div>
       </details>
-    </div>
 
-    <div class="panel">
-      <div class="panel-title">Manual JWT (fallback)</div>
-      <label for="jwtInput">Only needed if you don't have a refresh token or auto-refresh fails. Expires ~15 min.</label>
-      <textarea id="jwtInput" rows="3" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
-      <div class="actions">
-        <button id="saveJwt">Save Token</button>
-        <button class="ghost" id="clearJwt">Clear</button>
-      </div>
-      <details style="margin-top:12px;" open>
-        <summary>How to get this token</summary>
-        <div class="hint">
-          <b>Easy way (bookmarklet):</b><br>
-          1. Drag this link to your bookmarks bar:
-          <a class="bookmarklet" href="javascript:(async()=>{try{const r=await fetch('/api/control-plane/auth/refresh',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({refreshToken:null})});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();const t=d.sessionToken;if(!t)throw new Error('No sessionToken in response');await navigator.clipboard.writeText(t);alert('FanStack JWT copied to clipboard! ('+t.length+' chars)\nPaste it into FanStack Manager.');}catch(e){alert('Failed: '+e.message+'\n\nRun this bookmarklet from an open fanstack.io tab while logged in.');}})();void(0);" style="display:inline-block; padding:4px 10px; margin:0 4px; background:var(--panel-2); border:1px solid var(--text-dim); border-radius:6px; color:var(--text); font-weight:500;">📋 Grab FanStack JWT</a><br>
-          2. Open <a href="https://fanstack.io" target="_blank">fanstack.io</a> (must be logged in) and click the bookmark.<br>
-          3. Come back here, paste, click Save Token.<br><br>
-
-          <b>Manual way (if bookmarklet fails):</b><br>
-          1. Log into fanstack.io. Open DevTools (F12) → <b>Network</b> tab → filter <code>link-pages</code>.<br>
-          2. Reload. Click any request → <b>Headers</b> → find <code>authorization: Bearer eyJ...</code>.<br>
-          3. Copy everything after <code>Bearer </code> and paste here.<br><br>
-          The token is stored in this browser only; it's forwarded to fanstack.io through our proxy per request.
+      <details style="margin-top:8px;">
+        <summary>Manual JWT (short-lived, ~15 min)</summary>
+        <div class="hint" style="margin-top:8px;">
+          <label for="jwtInput">Only if auto-refresh isn't working. Expires quickly.</label>
+          <textarea id="jwtInput" rows="3" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+          <div class="actions">
+            <button id="saveJwt">Save</button>
+            <button class="ghost" id="clearJwt">Clear</button>
+          </div>
+          <div style="margin-top:8px;">
+            Drag this to your bookmarks bar:
+            <a class="bookmarklet" href="javascript:(async()=>{try{const r=await fetch('/api/control-plane/auth/refresh',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({refreshToken:null})});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();const t=d.sessionToken;if(!t)throw new Error('No sessionToken in response');await navigator.clipboard.writeText(t);alert('FanStack JWT copied to clipboard! ('+t.length+' chars)\nPaste it into FanStack Manager.');}catch(e){alert('Failed: '+e.message+'\n\nRun this bookmarklet from an open fanstack.io tab while logged in.');}})();void(0);" style="display:inline-block; padding:4px 10px; margin:0 4px; background:var(--panel-2); border:1px solid var(--text-dim); border-radius:6px; color:var(--text); font-weight:500;">📋 Grab FanStack JWT</a>
+            → click on fanstack.io while logged in → paste here.
+          </div>
         </div>
       </details>
-    </div>
 
-    <div class="panel">
-      <div class="panel-title">API Key (for Short Links)</div>
-      <label for="apiKey">External API key (<code>fsl_...</code>). Only needed for the Short Links tab.</label>
-      <div class="row">
-        <input type="password" id="apiKey" placeholder="fsl_..." autocomplete="off">
-        <button id="saveKey">Save</button>
-        <button class="ghost" id="clearKey">Clear</button>
-      </div>
+      <details style="margin-top:8px;">
+        <summary>API key (for Short Links tab)</summary>
+        <div class="hint" style="margin-top:8px;">
+          <label for="apiKey">External API key (<code>fsl_...</code>). Auto-fetched on login. Only paste manually if login didn't work.</label>
+          <div class="row">
+            <input type="password" id="apiKey" placeholder="fsl_..." autocomplete="off">
+            <button id="saveKey">Save</button>
+            <button class="ghost" id="clearKey">Clear</button>
+          </div>
+        </div>
+      </details>
     </div>
   </div>
 
