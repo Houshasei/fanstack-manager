@@ -355,20 +355,27 @@
     } catch { return null; }
   }
 
+  function flash(btn, msg, cls = 'ok') {
+    const orig = btn.textContent;
+    btn.textContent = msg;
+    btn.dataset.flashCls = cls;
+    setTimeout(() => { btn.textContent = orig; delete btn.dataset.flashCls; }, 1200);
+  }
+
   $('saveJwt').addEventListener('click', () => {
     const v = $('jwtInput').value.trim().replace(/^Bearer\s+/i, '');
-    if (!v) return alert('Paste a JWT');
+    if (!v) return flash($('saveJwt'), 'Empty', 'err');
     jwt = v; localStorage.setItem(JWT_STORAGE, v); $('jwtInput').value = v;
-    updateStatus(); alert('JWT saved.');
+    updateStatus(); flash($('saveJwt'), 'Saved ✓');
   });
   $('clearJwt').addEventListener('click', () => {
     jwt = ''; localStorage.removeItem(JWT_STORAGE); $('jwtInput').value = ''; updateStatus();
   });
   $('saveKey').addEventListener('click', () => {
     const v = $('apiKey').value.trim();
-    if (!v) return alert('Enter an API key');
+    if (!v) return flash($('saveKey'), 'Empty', 'err');
     apiKey = v; localStorage.setItem(KEY_STORAGE, v); updateStatus();
-    alert('API key saved.');
+    flash($('saveKey'), 'Saved ✓');
   });
   $('clearKey').addEventListener('click', () => {
     apiKey = ''; localStorage.removeItem(KEY_STORAGE); $('apiKey').value = ''; updateStatus();
@@ -424,7 +431,7 @@
   });
 
   async function loadDestPagesList() {
-    if (!jwt) return alert('Paste your JWT in the Auth tab first.');
+    if (!jwt) { flash($('loadPagesList'), 'Need JWT', 'err'); return; }
     const btn = $('loadPagesList');
     btn.disabled = true;
     btn.textContent = 'Loading…';
@@ -447,7 +454,7 @@
       populateDestPageSelect();
       btn.textContent = 'Refresh Pages';
     } catch (e) {
-      alert('Failed: ' + e.message + (e.status===401 ? ' (JWT expired?)' : ''));
+      $('pageMeta').innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}${e.status===401?' (JWT expired?)':''}</span>`;
       btn.textContent = 'Load Pages';
     }
     btn.disabled = false;
@@ -490,8 +497,8 @@
   async function loadDestPage() {
     const urlVal = $('pageUrl').value.trim();
     const parsed = parsePageUrl(urlVal);
-    if (!parsed) return alert('URL must look like https://fanstack.io/v2/links/{orgId}/{pageId}/edit');
-    if (!jwt) return alert('Paste your JWT in the Auth tab first.');
+    if (!parsed) { $('pageMeta').innerHTML = '<span style="color:var(--red)">URL must look like https://fanstack.io/v2/links/{orgId}/{pageId}/edit</span>'; return; }
+    if (!jwt) { $('pageMeta').innerHTML = '<span style="color:var(--red)">Paste your JWT in the Auth tab first.</span>'; return; }
     localStorage.setItem(PAGEURL_STORAGE, urlVal);
     destOrgId = parsed.orgId; destPageId = parsed.pageId;
     $('pageMeta').innerHTML = '<span>Loading&hellip;</span>';
@@ -519,9 +526,39 @@
     items.forEach(it => {
       const div = document.createElement('div');
       div.className = 'link-item';
-      div.innerHTML = `<a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">${escapeHtml(it.url)}</a>
-                       <span style="color:var(--text-dim)">${it.isActive ? '' : 'inactive'}</span>`;
+      div.innerHTML = `<a href="${escapeAttr(it.url)}" target="_blank" rel="noopener" style="flex:1; min-width:0;">${escapeHtml(it.url)}</a>
+                       <span style="color:var(--text-dim); margin:0 8px;">${it.isActive ? '' : 'inactive'}</span>
+                       <button class="ghost dest-remove" data-id="${escapeAttr(it.id)}" data-url="${escapeAttr(it.url)}" title="Remove this destination" style="padding:2px 10px; font-size:14px; color:var(--red); border-color:var(--red);">×</button>`;
       el.appendChild(div);
+    });
+    el.querySelectorAll('.dest-remove').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = btn.dataset.id, url = btn.dataset.url;
+        btn.disabled = true;
+        btn.textContent = '…';
+        try {
+          await apiInternal(`/links/api/v1/organizations/${destOrgId}/link-pages/${destPageId}/items/${id}`, { method: 'DELETE' });
+          // remove from local state
+          destPageData.items = (destPageData.items || []).filter(x => x.id !== id);
+          // update meta + list without full re-fetch
+          const cnt = (destPageData.items || []).length;
+          $('pageMeta').innerHTML = `
+            <span>Page: <b>${escapeHtml(destPageData.name || '(unnamed)')}</b></span>
+            <span>Destinations: <b>${cnt}</b></span>
+            <span>Type: <b>${escapeHtml(destPageData.pageType || 'direct')}</b></span>
+          `;
+          renderDestList();
+          const cached = cachedDestPages.find(p => p.id === destPageId);
+          if (cached) { cached.itemCount = cnt; localStorage.setItem(DESTPAGES_STORAGE, JSON.stringify(cachedDestPages)); populateDestPageSelect(); }
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = '×';
+          btn.style.background = 'var(--red)';
+          btn.style.color = 'var(--accent-fg)';
+          btn.title = 'Failed: ' + err.message + (err.status === 401 ? ' (JWT expired)' : '');
+          setTimeout(() => { btn.style.background = ''; btn.style.color = 'var(--red)'; btn.title = 'Remove this destination'; }, 2000);
+        }
+      });
     });
   }
 
@@ -557,8 +594,6 @@
       return;
     }
     if (!toAdd.length) return log($('destAddLog'), 'Nothing to add.', 'info');
-    if (!confirm(`Add ${toAdd.length} destination(s)?`)) return;
-
     $('destAddBtn').disabled = true;
     const startSort = ((destPageData.items || []).reduce((m,i) => Math.max(m, i.sortOrder ?? 0), -1)) + 1;
     let ok = 0, fail = 0;
@@ -608,8 +643,6 @@
     missing.forEach(u => log($('destDelLog'), `MISS  ${u}`, 'skip'));
 
     if (!toDelete.length) return log($('destDelLog'), 'Nothing to delete.', 'info');
-    if (!confirm(`Delete ${toDelete.length} destination(s)?`)) return;
-
     $('destDelBtn').disabled = true;
     let ok = 0, fail = 0;
     for (const item of toDelete) {
@@ -726,7 +759,6 @@
       log($('geoLog'), `Mode: REPLACE · Was: ${existing.size} blocked · Will be: ${newBlocked.length} blocked`, 'info');
     }
 
-    if (!confirm(`Apply geo blocking? ${newBlocked.length} countries will be blocked.`)) return;
     $('geoApplyBtn').disabled = true;
     try {
       const updated = await patchPageBlockedCountries(newBlocked);
@@ -740,8 +772,7 @@
   });
 
   $('geoClearBtn').addEventListener('click', async () => {
-    if (!destPageData) return alert('Load a page first.');
-    if (!confirm('Clear ALL blocked countries?')) return;
+    if (!destPageData) { clearLog($('geoLog')); log($('geoLog'), 'Load a page first.', 'err'); return; }
     clearLog($('geoLog'));
     $('geoClearBtn').disabled = true;
     try {
@@ -756,7 +787,7 @@
   });
 
   $('geoShowBtn').addEventListener('click', () => {
-    if (!destPageData) return alert('Load a page first.');
+    if (!destPageData) return flash($('geoShowBtn'), 'Load a page first', 'err');
     const el = $('geoList');
     el.classList.toggle('hidden');
     if (el.classList.contains('hidden')) { $('geoShowBtn').textContent = 'Show currently blocked'; return; }
@@ -768,9 +799,9 @@
   });
 
   $('destVerifyBtn').addEventListener('click', () => {
-    if (!destPageData) return alert('Load a page first.');
+    if (!destPageData) return flash($('destVerifyBtn'), 'Load a page first', 'err');
     const parsed = parseUrlLines($('destVerifyInput').value);
-    if (!parsed.length) return alert('No URLs parsed.');
+    if (!parsed.length) return flash($('destVerifyBtn'), 'No URLs', 'err');
     const existing = new Set((destPageData.items || []).map(i => i.url));
     let found = 0;
     const el = $('destVerifyResults');
@@ -793,7 +824,7 @@
   });
 
   async function initShortLinks() {
-    if (!apiKey) { alert('Set an API key in the Auth tab first.'); return; }
+    if (!apiKey) { $('linkPageMeta').innerHTML = '<span style="color:var(--red)">Set an API key in the Auth tab first.</span>'; return; }
     try {
       $('pageSelect').innerHTML = '<option>Loading...</option>';
       $('hostSelect').innerHTML = '<option>Loading...</option>';
@@ -802,7 +833,7 @@
       populatePages();
       await onPageChange();
     } catch (e) {
-      alert('Failed to load: ' + e.message);
+      $('linkPageMeta').innerHTML = `<span style="color:var(--red)">Failed to load: ${escapeHtml(e.message)}</span>`;
     }
   }
 
@@ -919,7 +950,6 @@
     dupes.forEach(d => log($('addLog'), `SKIP  ${d.id}`, 'skip'));
     if (dryRun) { toAdd.forEach(t => log($('addLog'), `WOULD ADD  ${t.id}`, 'info')); return; }
     if (!toAdd.length) return log($('addLog'), 'Nothing to add.', 'info');
-    if (!confirm(`Add ${toAdd.length} link(s)?`)) return;
     $('addBtn').disabled = true;
     let ok = 0, fail = 0;
     for (const p of toAdd) {
@@ -942,7 +972,6 @@
     const parsed = parseShortLinkLines($('delInput').value, currentHost);
     if (!parsed.length) return log($('delLog'), 'No valid links.', 'err');
     log($('delLog'), `Parsed ${parsed.length} link(s).`, 'info');
-    if (!confirm(`Delete ${parsed.length} link(s)?`)) return;
     $('delBtn').disabled = true;
     let ok = 0, fail = 0, missing = 0;
     for (const p of parsed) {
@@ -964,7 +993,7 @@
     $('verifyResults').classList.add('hidden');
     $('verifySummary').classList.add('hidden');
     const parsed = parseShortLinkLines($('verifyInput').value, currentHost);
-    if (!parsed.length) return alert('No valid links parsed.');
+    if (!parsed.length) return flash($('verifyBtn'), 'No links', 'err');
     const scope = $('verifyScope').value;
     $('verifyBtn').disabled = true;
     try {
@@ -989,7 +1018,7 @@
         <div class="stat">Scope: <b>${scope === 'page' ? 'this page' : 'entire org'}</b></div>
       `;
     } catch (e) {
-      alert('Verify failed: ' + e.message);
+      $('verifySummary').classList.remove('hidden'); $('verifySummary').innerHTML = `<div class="stat" style="color:var(--red)">Verify failed: ${escapeHtml(e.message)}</div>`;
     }
     $('verifyBtn').disabled = false;
   });
