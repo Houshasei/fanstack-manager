@@ -91,9 +91,30 @@
 
   <div class="tab-panel" data-panel="auth">
     <div class="panel">
-      <div class="panel-title">JWT Session Token (for Destinations)</div>
-      <label for="jwtInput">Bearer token from fanstack.io. Expires ~15 min — re-paste when destinations calls start failing with 401.</label>
-      <textarea id="jwtInput" rows="4" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+      <div class="panel-title">Refresh Token (Auto-refreshing, ~14 day lifespan)</div>
+      <label for="refreshTokenInput">Paste once. The app will auto-refresh your JWT before every call. Rotates every use (~14 days validity per rotation).</label>
+      <input type="password" id="refreshTokenInput" placeholder="0786768606184264BC452767..." autocomplete="off">
+      <div class="actions">
+        <button id="saveRefresh">Save Refresh Token</button>
+        <button class="ghost" id="testRefresh">Test</button>
+        <button class="ghost" id="clearRefresh">Clear</button>
+      </div>
+      <details style="margin-top:12px;">
+        <summary>How to get the refresh token</summary>
+        <div class="hint">
+          1. Log into <a href="https://fanstack.io" target="_blank">fanstack.io</a>.<br>
+          2. Open DevTools (F12) → <b>Application</b> tab (Chrome) or <b>Storage</b> tab (Firefox).<br>
+          3. Under <b>Cookies</b> → <code>https://fanstack.io</code>, find <code>fanstack.refresh_token</code>.<br>
+          4. Copy the <b>Value</b> and paste here.<br><br>
+          <b>Caveat:</b> each refresh rotates this token. If you're actively using fanstack.io in another tab and the app auto-refreshes, your fanstack.io tab may get logged out (you'll just need to re-login there and grab a fresh refresh token if you want auto-refresh to keep working).
+        </div>
+      </details>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Manual JWT (fallback)</div>
+      <label for="jwtInput">Only needed if you don't have a refresh token or auto-refresh fails. Expires ~15 min.</label>
+      <textarea id="jwtInput" rows="3" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
       <div class="actions">
         <button id="saveJwt">Save Token</button>
         <button class="ghost" id="clearJwt">Clear</button>
@@ -262,12 +283,15 @@
   const INTERNAL_BASE = '/internal';
   const KEY_STORAGE = 'fanstack_api_key';
   const JWT_STORAGE = 'fanstack_jwt';
+  const REFRESH_STORAGE = 'fanstack_refresh_token';
   const HOST_STORAGE = 'fanstack_last_host';
   const PAGE_STORAGE = 'fanstack_last_page';
   const PAGEURL_STORAGE = 'fanstack_last_pageurl';
 
   let apiKey = localStorage.getItem(KEY_STORAGE) || '';
   let jwt = localStorage.getItem(JWT_STORAGE) || '';
+  let refreshToken = localStorage.getItem(REFRESH_STORAGE) || '';
+  let refreshInFlight = null;
   let pages = [], domains = [], currentLinks = [];
   let currentPageId = null, currentHost = null;
   let destOrgId = null, destPageId = null, destPageData = null;
@@ -299,6 +323,7 @@
   }
 
   async function apiInternal(path, opts = {}) {
+    await ensureFreshJwt();
     const res = await fetch(INTERNAL_BASE + path, {
       ...opts,
       headers: {
@@ -307,7 +332,66 @@
         ...(opts.headers || {})
       }
     });
+    if (res.status === 401 && refreshToken) {
+      // JWT unexpectedly rejected — try one more refresh
+      await doRefresh(true);
+      if (jwt) {
+        const res2 = await fetch(INTERNAL_BASE + path, {
+          ...opts,
+          headers: {
+            'X-Fs-Token': jwt,
+            ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+            ...(opts.headers || {})
+          }
+        });
+        return handleRes(res2);
+      }
+    }
     return handleRes(res);
+  }
+
+  async function ensureFreshJwt() {
+    if (!refreshToken) return; // no auto-refresh available
+    const exp = jwt ? getJwtExpiry(jwt) : null;
+    // refresh if jwt missing, unparseable, or expires within 60s
+    if (jwt && exp && exp - Date.now() > 60000) return;
+    await doRefresh(false);
+  }
+
+  async function doRefresh(force) {
+    if (!refreshToken) return;
+    if (refreshInFlight) return refreshInFlight;
+    refreshInFlight = (async () => {
+      try {
+        const r = await fetch('/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          if (r.status === 401 || r.status === 403) {
+            // Refresh token expired — clear it so we don't loop
+            refreshToken = '';
+            localStorage.removeItem(REFRESH_STORAGE);
+          }
+          updateStatus();
+          throw new Error(data?.error || `refresh_${r.status}`);
+        }
+        if (data.sessionToken) {
+          jwt = data.sessionToken;
+          localStorage.setItem(JWT_STORAGE, jwt);
+        }
+        if (data.refreshToken) {
+          refreshToken = data.refreshToken;
+          localStorage.setItem(REFRESH_STORAGE, refreshToken);
+        }
+        updateStatus();
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+    return refreshInFlight;
   }
 
   async function handleRes(res) {
@@ -337,13 +421,14 @@
 
   function updateStatus() {
     const parts = [];
+    if (refreshToken) parts.push(`<span class="ok">Auto-refresh on</span>`);
     if (jwt) {
       const exp = getJwtExpiry(jwt);
       if (exp) {
         const mins = Math.round((exp - Date.now()) / 60000);
         parts.push(mins > 0 ? `<span class="ok">JWT ok (${mins}m left)</span>` : `<span class="err">JWT expired</span>`);
       } else parts.push(`<span class="warn">JWT loaded</span>`);
-    } else parts.push(`<span>No JWT</span>`);
+    } else if (!refreshToken) parts.push(`<span>No JWT</span>`);
     parts.push(apiKey ? `<span class="ok">API key set</span>` : `<span>No API key</span>`);
     $('statusBar').innerHTML = parts.join(' &middot; ');
   }
@@ -381,8 +466,29 @@
     apiKey = ''; localStorage.removeItem(KEY_STORAGE); $('apiKey').value = ''; updateStatus();
   });
 
+  $('saveRefresh').addEventListener('click', async () => {
+    const v = $('refreshTokenInput').value.trim();
+    if (!v) return flash($('saveRefresh'), 'Empty', 'err');
+    refreshToken = v; localStorage.setItem(REFRESH_STORAGE, v);
+    updateStatus();
+    flash($('saveRefresh'), 'Saved ✓');
+    // Immediately try to fetch a fresh JWT
+    try { await doRefresh(true); flash($('saveRefresh'), 'JWT fetched ✓'); }
+    catch (e) { flash($('saveRefresh'), 'Refresh failed', 'err'); }
+  });
+  $('testRefresh').addEventListener('click', async () => {
+    if (!refreshToken) return flash($('testRefresh'), 'No token', 'err');
+    flash($('testRefresh'), 'Testing…');
+    try { await doRefresh(true); flash($('testRefresh'), 'Works ✓'); }
+    catch (e) { flash($('testRefresh'), 'Failed', 'err'); }
+  });
+  $('clearRefresh').addEventListener('click', () => {
+    refreshToken = ''; localStorage.removeItem(REFRESH_STORAGE); $('refreshTokenInput').value = ''; updateStatus();
+  });
+
   $('jwtInput').value = jwt;
   $('apiKey').value = apiKey;
+  $('refreshTokenInput').value = refreshToken;
 
   function log(el, msg, cls = '') {
     el.classList.remove('hidden');
