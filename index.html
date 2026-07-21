@@ -130,12 +130,19 @@
   <div class="tab-panel hidden" data-panel="dest">
     <div class="panel">
       <div class="panel-title">Direct Gate Page</div>
-      <label for="pageUrl">Paste the URL of the Direct Gate edit page from fanstack.io</label>
-      <input type="text" id="pageUrl" placeholder="https://fanstack.io/v2/links/{orgId}/{pageId}/edit">
-      <div class="hint">Example: <code>https://fanstack.io/v2/links/6628e3f8-.../35fe96e6-.../edit</code></div>
-      <div class="actions">
-        <button id="loadPage">Load Page</button>
+      <div class="row">
+        <select id="destPageSelect" style="flex:1;"><option value="">— Load pages first —</option></select>
+        <button class="ghost" id="loadPagesList">Load Pages</button>
       </div>
+      <details style="margin-top:8px;">
+        <summary>…or paste a URL manually</summary>
+        <div class="hint" style="margin-top:6px;">
+          <input type="text" id="pageUrl" placeholder="https://fanstack.io/v2/links/{orgId}/{pageId}/edit">
+          <div class="actions">
+            <button class="ghost" id="loadPage">Load from URL</button>
+          </div>
+        </div>
+      </details>
       <div class="meta" id="pageMeta"></div>
       <div class="links-list hidden" id="destList"></div>
       <div class="actions">
@@ -398,6 +405,88 @@
   $('loadPage').addEventListener('click', loadDestPage);
   $('pageUrl').value = localStorage.getItem(PAGEURL_STORAGE) || '';
 
+  const DESTORG_STORAGE = 'fanstack_dest_org';
+  const DESTPAGES_STORAGE = 'fanstack_dest_pages_cache';
+  const DESTLASTPAGE_STORAGE = 'fanstack_dest_last_page_id';
+  let cachedDestPages = [];
+  try { cachedDestPages = JSON.parse(localStorage.getItem(DESTPAGES_STORAGE) || '[]'); } catch {}
+  if (cachedDestPages.length) populateDestPageSelect();
+
+  $('loadPagesList').addEventListener('click', loadDestPagesList);
+  $('destPageSelect').addEventListener('change', () => {
+    const val = $('destPageSelect').value;
+    if (!val) return;
+    const [orgId, pageId] = val.split('|');
+    destOrgId = orgId;
+    destPageId = pageId;
+    localStorage.setItem(DESTLASTPAGE_STORAGE, val);
+    fetchLoadedDestPage();
+  });
+
+  async function loadDestPagesList() {
+    if (!jwt) return alert('Paste your JWT in the Auth tab first.');
+    const btn = $('loadPagesList');
+    btn.disabled = true;
+    btn.textContent = 'Loading…';
+    try {
+      let orgId = localStorage.getItem(DESTORG_STORAGE);
+      if (!orgId) {
+        const who = await apiInternal('/control-plane/auth/whoami');
+        orgId = who?.organization?.organizationId || who?.actor?.organizationId;
+        if (!orgId) throw new Error('Could not find organizationId in whoami response');
+        localStorage.setItem(DESTORG_STORAGE, orgId);
+      }
+      const pages = await apiInternal(`/links/api/v1/organizations/${orgId}/link-pages`);
+      cachedDestPages = (Array.isArray(pages) ? pages : []).map(p => ({
+        id: p.id, orgId: p.organizationId || orgId, name: p.name || '(unnamed)',
+        itemCount: p.itemCount ?? 0, publishedLinkCount: p.publishedLinkCount ?? 0,
+        pageType: p.pageType || 'direct',
+      }));
+      cachedDestPages.sort((a,b) => a.name.localeCompare(b.name));
+      localStorage.setItem(DESTPAGES_STORAGE, JSON.stringify(cachedDestPages));
+      populateDestPageSelect();
+      btn.textContent = 'Refresh Pages';
+    } catch (e) {
+      alert('Failed: ' + e.message + (e.status===401 ? ' (JWT expired?)' : ''));
+      btn.textContent = 'Load Pages';
+    }
+    btn.disabled = false;
+  }
+
+  function populateDestPageSelect() {
+    const sel = $('destPageSelect');
+    sel.innerHTML = '<option value="">— Select a page —</option>';
+    cachedDestPages.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.orgId + '|' + p.id;
+      opt.textContent = `${p.name} — ${p.itemCount} destination${p.itemCount===1?'':'s'}`;
+      sel.appendChild(opt);
+    });
+    const last = localStorage.getItem(DESTLASTPAGE_STORAGE);
+    if (last && cachedDestPages.some(p => (p.orgId + '|' + p.id) === last)) {
+      sel.value = last;
+    }
+  }
+
+  async function fetchLoadedDestPage() {
+    $('pageMeta').innerHTML = '<span>Loading&hellip;</span>';
+    try {
+      destPageData = await apiInternal(`/links/api/v1/organizations/${destOrgId}/link-pages/${destPageId}`);
+      const items = destPageData.items || [];
+      $('pageMeta').innerHTML = `
+        <span>Page: <b>${escapeHtml(destPageData.name || '(unnamed)')}</b></span>
+        <span>Destinations: <b>${items.length}</b></span>
+        <span>Type: <b>${escapeHtml(destPageData.pageType || 'direct')}</b></span>
+      `;
+      $('toggleDest').classList.remove('hidden');
+      $('copyDest').classList.remove('hidden');
+      renderDestList();
+      updateGeoMeta();
+    } catch (e) {
+      $('pageMeta').innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}${e.status===401?' (JWT expired?)':''}</span>`;
+    }
+  }
+
   async function loadDestPage() {
     const urlVal = $('pageUrl').value.trim();
     const parsed = parsePageUrl(urlVal);
@@ -407,7 +496,7 @@
     destOrgId = parsed.orgId; destPageId = parsed.pageId;
     $('pageMeta').innerHTML = '<span>Loading&hellip;</span>';
     try {
-      destPageData = await apiInternal(`/organizations/${destOrgId}/link-pages/${destPageId}`);
+      destPageData = await apiInternal(`/links/api/v1/organizations/${destOrgId}/link-pages/${destPageId}`);
       const items = destPageData.items || [];
       $('pageMeta').innerHTML = `
         <span>Page: <b>${escapeHtml(destPageData.name || '(unnamed)')}</b></span>
@@ -481,7 +570,7 @@
         buttonHeightMultiplier: 3, buttonFontSize: 15,
       };
       try {
-        await apiInternal(`/organizations/${destOrgId}/link-pages/${destPageId}/items`, {
+        await apiInternal(`/links/api/v1/organizations/${destOrgId}/link-pages/${destPageId}/items`, {
           method: 'POST', body: JSON.stringify(body),
         });
         log($('destAddLog'), `OK    ${url}`, 'ok'); ok++;
@@ -493,7 +582,10 @@
     }
     log($('destAddLog'), `Done. Added: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
     $('destAddBtn').disabled = false;
-    await loadDestPage();
+    await fetchLoadedDestPage();
+    // update cached count
+    const cached = cachedDestPages.find(p => p.id === destPageId);
+    if (cached) { cached.itemCount = (destPageData?.items || []).length; localStorage.setItem(DESTPAGES_STORAGE, JSON.stringify(cachedDestPages)); populateDestPageSelect(); }
   }
   $('destAddBtn').addEventListener('click', () => addDestFlow(false));
   $('destAddDry').addEventListener('click', () => addDestFlow(true));
@@ -522,7 +614,7 @@
     let ok = 0, fail = 0;
     for (const item of toDelete) {
       try {
-        await apiInternal(`/organizations/${destOrgId}/link-pages/${destPageId}/items/${item.id}`, { method: 'DELETE' });
+        await apiInternal(`/links/api/v1/organizations/${destOrgId}/link-pages/${destPageId}/items/${item.id}`, { method: 'DELETE' });
         log($('destDelLog'), `DEL   ${item.url}`, 'ok'); ok++;
       } catch (e) {
         log($('destDelLog'), `FAIL  ${item.url} — ${e.message}${e.status===401?' (JWT expired)':''}`, 'err');
@@ -532,7 +624,10 @@
     }
     log($('destDelLog'), `Done. Deleted: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
     $('destDelBtn').disabled = false;
-    await loadDestPage();
+    await fetchLoadedDestPage();
+    // update cached count
+    const cached = cachedDestPages.find(p => p.id === destPageId);
+    if (cached) { cached.itemCount = (destPageData?.items || []).length; localStorage.setItem(DESTPAGES_STORAGE, JSON.stringify(cachedDestPages)); populateDestPageSelect(); }
   });
 
   // ---- Geo blocking ----
@@ -606,7 +701,7 @@
       ogDescription: destPageData.ogDescription ?? null,
       ogImageUrl: destPageData.ogImageUrl ?? null,
     };
-    return await apiInternal(`/organizations/${destOrgId}/link-pages/${destPageId}`, {
+    return await apiInternal(`/links/api/v1/organizations/${destOrgId}/link-pages/${destPageId}`, {
       method: 'PATCH', body: JSON.stringify(body),
     });
   }

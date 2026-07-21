@@ -2,7 +2,7 @@
 // Forwards the user-supplied JWT (X-Fs-Token header) as Authorization: Bearer <token>.
 // The JWT lives only on the request path (never stored server-side).
 
-const UPSTREAM = 'https://fanstack.io/api/links/api/v1';
+const UPSTREAM = 'https://fanstack.io/api';
 
 export async function onRequest(context) {
   const { request } = context;
