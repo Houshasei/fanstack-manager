@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FanStack Link Manager</title>
+<title>FanStack Manager</title>
 <style>
   :root {
     --bg: #0f0f10;
@@ -20,262 +20,242 @@
     --blue: #60a5fa;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    padding: 24px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
+  body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
   .container { max-width: 1100px; margin: 0 auto; }
   h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
-  .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 16px;
-  }
-  .panel-title {
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-  input, select, textarea, button {
-    font-family: inherit;
-    font-size: 14px;
-    background: var(--panel-2);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 12px;
-    outline: none;
-  }
-  input:focus, select:focus, textarea:focus {
-    border-color: var(--text-dim);
-  }
+  .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 20px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .panel-title { font-size: 11px; letter-spacing: 0.08em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 12px; }
+  input, select, textarea, button { font-family: inherit; font-size: 14px; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--text-dim); }
   input, select { width: 100%; }
-  textarea {
-    width: 100%;
-    resize: vertical;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 13px;
-    line-height: 1.5;
-  }
-  button {
-    cursor: pointer;
-    background: var(--accent);
-    color: var(--accent-fg);
-    border-color: var(--accent);
-    font-weight: 500;
-    padding: 10px 16px;
-  }
+  textarea { width: 100%; resize: vertical; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; line-height: 1.5; }
+  button { cursor: pointer; background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 500; padding: 10px 16px; }
   button:hover:not(:disabled) { opacity: 0.9; }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
-  button.ghost {
-    background: transparent;
-    color: var(--text);
-    border-color: var(--border);
-  }
-  button.danger {
-    background: transparent;
-    color: var(--red);
-    border-color: var(--red);
-  }
-  button.danger:hover:not(:disabled) {
-    background: var(--red);
-    color: var(--accent-fg);
-  }
+  button.ghost { background: transparent; color: var(--text); border-color: var(--border); }
+  button.danger { background: transparent; color: var(--red); border-color: var(--red); }
+  button.danger:hover:not(:disabled) { background: var(--red); color: var(--accent-fg); }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
   label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
-  .meta {
-    display: flex; gap: 24px; margin-top: 8px; font-size: 13px;
-  }
+  .meta { display: flex; gap: 24px; margin-top: 8px; font-size: 13px; flex-wrap: wrap; }
   .meta span { color: var(--text-dim); }
   .meta b { color: var(--text); font-weight: 600; }
-  .links-list {
-    margin-top: 12px;
-    max-height: 320px;
-    overflow-y: auto;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 12px;
-  }
-  .link-item {
-    padding: 6px 12px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+  .links-list { margin-top: 12px; max-height: 320px; overflow-y: auto; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+  .link-item { padding: 6px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; word-break: break-all; }
   .link-item:last-child { border-bottom: none; }
   .link-item.hit { background: rgba(110, 231, 160, 0.12); color: var(--green); }
-  .log {
-    margin-top: 12px;
-    max-height: 240px;
-    overflow-y: auto;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 12px;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 12px;
-    line-height: 1.6;
-  }
+  .log { margin-top: 12px; max-height: 240px; overflow-y: auto; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; line-height: 1.6; }
   .log-line.ok { color: var(--green); }
   .log-line.err { color: var(--red); }
   .log-line.skip { color: var(--yellow); }
   .log-line.info { color: var(--text-dim); }
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-left: 8px;
-  }
   .hidden { display: none !important; }
   .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .verify-summary {
-    margin-top: 12px;
-    display: flex;
-    gap: 16px;
-    font-size: 13px;
-  }
+  .verify-summary { margin-top: 12px; display: flex; gap: 16px; font-size: 13px; flex-wrap: wrap; }
   .verify-summary .stat b { color: var(--text); }
   .verify-summary .stat.found b { color: var(--green); }
   .verify-summary .stat.missing b { color: var(--red); }
   a { color: var(--blue); text-decoration: none; }
   a:hover { text-decoration: underline; }
-  .top-bar {
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
-  }
-  .key-status {
-    font-size: 12px; color: var(--text-dim);
-  }
-  .key-status.ok { color: var(--green); }
+  .top-bar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+  .status { font-size: 12px; color: var(--text-dim); text-align: right; }
+  .status .ok { color: var(--green); }
+  .status .warn { color: var(--yellow); }
+  .status .err { color: var(--red); }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 16px; cursor: pointer; color: var(--text-dim); border-bottom: 2px solid transparent; margin-bottom: -1px; font-size: 14px; font-weight: 500; }
+  .tab.active { color: var(--text); border-bottom-color: var(--text); }
+  .tab:hover { color: var(--text); }
+  details summary { cursor: pointer; padding: 6px 0; color: var(--text-dim); font-size: 13px; }
+  details[open] summary { color: var(--text); margin-bottom: 8px; }
+  .hint { font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.5; }
+  .hint code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
 </style>
 </head>
 <body>
 <div class="container">
   <div class="top-bar">
     <div>
-      <h1>FanStack Link Manager</h1>
-      <div class="subtitle">Bulk manage links, gates, and verify presence across landing pages.</div>
+      <h1>FanStack Manager</h1>
+      <div class="subtitle">Bulk manage destinations and short links.</div>
     </div>
-    <div class="key-status" id="keyStatus">No API key</div>
+    <div class="status" id="statusBar"></div>
   </div>
 
-  <!-- API KEY -->
-  <div class="panel" id="keyPanel">
-    <div class="panel-title">API Key</div>
-    <label for="apiKey">Enter your FanStack API key (stored in browser only)</label>
-    <div class="row">
-      <input type="password" id="apiKey" placeholder="fsl_..." autocomplete="off">
-      <button id="saveKey">Save</button>
-      <button class="ghost" id="clearKey">Clear</button>
+  <div class="tabs">
+    <div class="tab active" data-tab="dest">Destinations</div>
+    <div class="tab" data-tab="links">Short Links</div>
+    <div class="tab" data-tab="auth">Auth</div>
+  </div>
+
+  <div class="tab-panel" data-panel="auth">
+    <div class="panel">
+      <div class="panel-title">JWT Session Token (for Destinations)</div>
+      <label for="jwtInput">Bearer token from fanstack.io. Expires ~15 min — re-paste when destinations calls start failing with 401.</label>
+      <textarea id="jwtInput" rows="4" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+      <div class="actions">
+        <button id="saveJwt">Save Token</button>
+        <button class="ghost" id="clearJwt">Clear</button>
+      </div>
+      <details style="margin-top:12px;">
+        <summary>How to get this token</summary>
+        <div class="hint">
+          1. Log into <a href="https://fanstack.io" target="_blank">fanstack.io</a>.<br>
+          2. Open DevTools (F12) → <b>Network</b> tab → filter <code>whoami</code> or <code>link-pages</code>.<br>
+          3. Reload the page. Click any request → <b>Headers</b> → find <code>authorization: Bearer eyJ...</code>.<br>
+          4. Copy everything after <code>Bearer </code> and paste here.<br>
+          The token is stored in this browser only; it's forwarded to fanstack.io through our proxy per request.
+        </div>
+      </details>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">API Key (for Short Links)</div>
+      <label for="apiKey">External API key (<code>fsl_...</code>). Only needed for the Short Links tab.</label>
+      <div class="row">
+        <input type="password" id="apiKey" placeholder="fsl_..." autocomplete="off">
+        <button id="saveKey">Save</button>
+        <button class="ghost" id="clearKey">Clear</button>
+      </div>
     </div>
   </div>
 
-  <!-- PAGE SELECTOR -->
-  <div class="panel hidden" id="pagePanel">
-    <div class="panel-title">Landing Page</div>
-    <div class="row">
-      <select id="pageSelect" style="flex: 1;"></select>
-      <select id="hostSelect" style="width: 220px;"></select>
-      <button class="ghost" id="refreshPages">Refresh</button>
+  <div class="tab-panel hidden" data-panel="dest">
+    <div class="panel">
+      <div class="panel-title">Direct Gate Page</div>
+      <label for="pageUrl">Paste the URL of the Direct Gate edit page from fanstack.io</label>
+      <input type="text" id="pageUrl" placeholder="https://fanstack.io/v2/links/{orgId}/{pageId}/edit">
+      <div class="hint">Example: <code>https://fanstack.io/v2/links/6628e3f8-.../35fe96e6-.../edit</code></div>
+      <div class="actions">
+        <button id="loadPage">Load Page</button>
+      </div>
+      <div class="meta" id="pageMeta"></div>
+      <div class="links-list hidden" id="destList"></div>
+      <div class="actions">
+        <button class="ghost hidden" id="toggleDest">Show current destinations</button>
+        <button class="ghost hidden" id="copyDest">Copy all URLs</button>
+      </div>
     </div>
-    <div class="meta" id="pageMeta"></div>
-    <div class="links-list hidden" id="linksList"></div>
-    <div class="actions">
-      <button class="ghost" id="toggleLinks">Show current links</button>
-      <button class="ghost" id="copyLinks">Copy all as text</button>
+
+    <div class="panel">
+      <div class="panel-title">Add Destinations</div>
+      <label for="destAddInput">Paste destination URLs (one per line). Duplicates against existing are skipped.</label>
+      <textarea id="destAddInput" rows="8" placeholder="https://t.me/username1&#10;https://t.me/username2"></textarea>
+      <div class="actions">
+        <button id="destAddBtn">Add Destinations</button>
+        <button class="ghost" id="destAddDry">Dry Run</button>
+      </div>
+      <div class="log hidden" id="destAddLog"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Delete Destinations</div>
+      <label for="destDelInput">Paste destination URLs to delete (one per line). Matched against exact URL.</label>
+      <textarea id="destDelInput" rows="8" placeholder="https://t.me/username1"></textarea>
+      <div class="actions">
+        <button class="danger" id="destDelBtn">Delete Destinations</button>
+      </div>
+      <div class="log hidden" id="destDelLog"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Verify Destinations</div>
+      <label for="destVerifyInput">Paste destination URLs to check.</label>
+      <textarea id="destVerifyInput" rows="8" placeholder="https://t.me/username1"></textarea>
+      <div class="actions">
+        <button id="destVerifyBtn">Verify</button>
+      </div>
+      <div class="verify-summary hidden" id="destVerifySummary"></div>
+      <div class="links-list hidden" id="destVerifyResults"></div>
     </div>
   </div>
 
-  <!-- ADD LINKS -->
-  <div class="panel hidden" id="addPanel">
-    <div class="panel-title">Add Links to Selected Page</div>
-    <label for="addInput">Paste links (one per line). Accepts full URLs, host/slug, or just slug.</label>
-    <textarea id="addInput" rows="8" placeholder="https://fanstack.link/summer-sale&#10;fanstack.link/vip-offer&#10;my-slug"></textarea>
-    <div class="actions">
-      <button id="addBtn">Add Links</button>
-      <button class="ghost" id="addDryRun">Dry Run (Preview)</button>
+  <div class="tab-panel hidden" data-panel="links">
+    <div class="panel">
+      <div class="panel-title">Landing Page</div>
+      <div class="row">
+        <select id="pageSelect" style="flex: 1;"></select>
+        <select id="hostSelect" style="width: 220px;"></select>
+        <button class="ghost" id="refreshPages">Refresh</button>
+      </div>
+      <div class="meta" id="linkPageMeta"></div>
+      <div class="links-list hidden" id="linksList"></div>
+      <div class="actions">
+        <button class="ghost" id="toggleLinks">Show current links</button>
+        <button class="ghost" id="copyLinks">Copy all as text</button>
+      </div>
     </div>
-    <div class="log hidden" id="addLog"></div>
-  </div>
 
-  <!-- DELETE LINKS -->
-  <div class="panel hidden" id="delPanel">
-    <div class="panel-title">Delete Links</div>
-    <label for="delInput">Paste links to delete (one per line). Accepts full URLs, host/slug, or just slug.</label>
-    <textarea id="delInput" rows="8" placeholder="https://fanstack.link/old-slug&#10;fanstack.link/another"></textarea>
-    <div class="actions">
-      <button class="danger" id="delBtn">Delete Links</button>
+    <div class="panel">
+      <div class="panel-title">Add Short Links</div>
+      <label for="addInput">Paste links (one per line). Accepts full URLs, host/slug, or just slug.</label>
+      <textarea id="addInput" rows="6" placeholder="https://fanstack.link/summer-sale&#10;fanstack.link/vip-offer"></textarea>
+      <div class="actions">
+        <button id="addBtn">Add Links</button>
+        <button class="ghost" id="addDryRun">Dry Run</button>
+      </div>
+      <div class="log hidden" id="addLog"></div>
     </div>
-    <div class="log hidden" id="delLog"></div>
-  </div>
 
-  <!-- VERIFY LINKS -->
-  <div class="panel hidden" id="verifyPanel">
-    <div class="panel-title">Verify Links</div>
-    <label for="verifyInput">Paste links (one per line). We'll highlight which ones exist on the selected page.</label>
-    <textarea id="verifyInput" rows="8" placeholder="https://fanstack.link/link-a&#10;fanstack.link/link-b"></textarea>
-    <div class="actions">
-      <button id="verifyBtn">Verify</button>
-      <select id="verifyScope" style="width: 220px;">
-        <option value="page">Against selected page</option>
-        <option value="all">Against entire org</option>
-      </select>
+    <div class="panel">
+      <div class="panel-title">Delete Short Links</div>
+      <label for="delInput">Paste links to delete (one per line).</label>
+      <textarea id="delInput" rows="6" placeholder="fanstack.link/old-slug"></textarea>
+      <div class="actions">
+        <button class="danger" id="delBtn">Delete Links</button>
+      </div>
+      <div class="log hidden" id="delLog"></div>
     </div>
-    <div class="verify-summary hidden" id="verifySummary"></div>
-    <div class="links-list hidden" id="verifyResults"></div>
+
+    <div class="panel">
+      <div class="panel-title">Verify Short Links</div>
+      <label for="verifyInput">Paste links (one per line).</label>
+      <textarea id="verifyInput" rows="6" placeholder="fanstack.link/link-a"></textarea>
+      <div class="actions">
+        <button id="verifyBtn">Verify</button>
+        <select id="verifyScope" style="width: 220px;">
+          <option value="page">Against selected page</option>
+          <option value="all">Against entire org</option>
+        </select>
+      </div>
+      <div class="verify-summary hidden" id="verifySummary"></div>
+      <div class="links-list hidden" id="verifyResults"></div>
+    </div>
   </div>
 </div>
 
 <script>
 (() => {
   const API_BASE = '/api';
+  const INTERNAL_BASE = '/internal';
   const KEY_STORAGE = 'fanstack_api_key';
+  const JWT_STORAGE = 'fanstack_jwt';
   const HOST_STORAGE = 'fanstack_last_host';
   const PAGE_STORAGE = 'fanstack_last_page';
+  const PAGEURL_STORAGE = 'fanstack_last_pageurl';
 
   let apiKey = localStorage.getItem(KEY_STORAGE) || '';
-  let pages = [];
-  let domains = [];
-  let currentLinks = [];
-  let currentPageId = null;
-  let currentHost = null;
+  let jwt = localStorage.getItem(JWT_STORAGE) || '';
+  let pages = [], domains = [], currentLinks = [];
+  let currentPageId = null, currentHost = null;
+  let destOrgId = null, destPageId = null, destPageData = null;
 
-  // ---- DOM refs ----
   const $ = (id) => document.getElementById(id);
-  const keyInput = $('apiKey');
-  const keyStatus = $('keyStatus');
-  const pagePanel = $('pagePanel');
-  const addPanel = $('addPanel');
-  const delPanel = $('delPanel');
-  const verifyPanel = $('verifyPanel');
-  const pageSelect = $('pageSelect');
-  const hostSelect = $('hostSelect');
-  const pageMeta = $('pageMeta');
-  const linksList = $('linksList');
-  const addLog = $('addLog');
-  const delLog = $('delLog');
-  const verifySummary = $('verifySummary');
-  const verifyResults = $('verifyResults');
 
-  // ---- API helpers ----
-  async function api(path, opts = {}) {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      const target = t.dataset.tab;
+      document.querySelectorAll('.tab-panel').forEach(p => {
+        p.classList.toggle('hidden', p.dataset.panel !== target);
+      });
+      if (target === 'links' && apiKey && !pages.length) initShortLinks();
+    });
+  });
+
+  async function apiExternal(path, opts = {}) {
     const res = await fetch(API_BASE + path, {
       ...opts,
       headers: {
@@ -284,65 +264,88 @@
         ...(opts.headers || {})
       }
     });
+    return handleRes(res);
+  }
+
+  async function apiInternal(path, opts = {}) {
+    const res = await fetch(INTERNAL_BASE + path, {
+      ...opts,
+      headers: {
+        'X-Fs-Token': jwt,
+        ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(opts.headers || {})
+      }
+    });
+    return handleRes(res);
+  }
+
+  async function handleRes(res) {
     const text = await res.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
     if (!res.ok) {
-      const err = new Error(data?.error || `HTTP ${res.status}`);
-      err.status = res.status;
-      err.data = data;
+      const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
+      err.status = res.status; err.data = data;
       throw err;
     }
     return data;
   }
 
   async function fetchAllPaged(path) {
-    let items = [];
-    let cursor = null;
+    let items = [], cursor = null;
     do {
       const q = new URLSearchParams({ limit: '100' });
       if (cursor) q.set('cursor', cursor);
       const sep = path.includes('?') ? '&' : '?';
-      const data = await api(path + sep + q.toString());
+      const data = await apiExternal(path + sep + q.toString());
       items = items.concat(data.items || []);
       cursor = data.nextCursor || null;
     } while (cursor);
     return items;
   }
 
-  // ---- Link parsing ----
-  function parseLink(line, defaultHost) {
-    line = line.trim();
-    if (!line) return null;
-    // strip protocol
-    let s = line.replace(/^https?:\/\//i, '').replace(/^\/+/, '');
-    // strip query/hash
-    s = s.split('?')[0].split('#')[0].replace(/\/+$/, '');
-    if (s.includes('/')) {
-      const [host, ...rest] = s.split('/');
-      const slug = rest.join('/');
-      if (!slug) return null;
-      return { host, slug, id: `${host}/${slug}` };
-    }
-    // just a slug
-    if (!defaultHost) return null;
-    return { host: defaultHost, slug: s, id: `${defaultHost}/${s}` };
+  function updateStatus() {
+    const parts = [];
+    if (jwt) {
+      const exp = getJwtExpiry(jwt);
+      if (exp) {
+        const mins = Math.round((exp - Date.now()) / 60000);
+        parts.push(mins > 0 ? `<span class="ok">JWT ok (${mins}m left)</span>` : `<span class="err">JWT expired</span>`);
+      } else parts.push(`<span class="warn">JWT loaded</span>`);
+    } else parts.push(`<span>No JWT</span>`);
+    parts.push(apiKey ? `<span class="ok">API key set</span>` : `<span>No API key</span>`);
+    $('statusBar').innerHTML = parts.join(' &middot; ');
   }
 
-  function parseLines(text, defaultHost) {
-    const seen = new Set();
-    const out = [];
-    for (const line of text.split(/\r?\n/)) {
-      const p = parseLink(line, defaultHost);
-      if (!p) continue;
-      if (seen.has(p.id)) continue;
-      seen.add(p.id);
-      out.push(p);
-    }
-    return out;
+  function getJwtExpiry(token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp ? payload.exp * 1000 : null;
+    } catch { return null; }
   }
 
-  // ---- Log ----
+  $('saveJwt').addEventListener('click', () => {
+    const v = $('jwtInput').value.trim().replace(/^Bearer\s+/i, '');
+    if (!v) return alert('Paste a JWT');
+    jwt = v; localStorage.setItem(JWT_STORAGE, v); $('jwtInput').value = v;
+    updateStatus(); alert('JWT saved.');
+  });
+  $('clearJwt').addEventListener('click', () => {
+    jwt = ''; localStorage.removeItem(JWT_STORAGE); $('jwtInput').value = ''; updateStatus();
+  });
+  $('saveKey').addEventListener('click', () => {
+    const v = $('apiKey').value.trim();
+    if (!v) return alert('Enter an API key');
+    apiKey = v; localStorage.setItem(KEY_STORAGE, v); updateStatus();
+    alert('API key saved.');
+  });
+  $('clearKey').addEventListener('click', () => {
+    apiKey = ''; localStorage.removeItem(KEY_STORAGE); $('apiKey').value = ''; updateStatus();
+  });
+
+  $('jwtInput').value = jwt;
+  $('apiKey').value = apiKey;
+
   function log(el, msg, cls = '') {
     el.classList.remove('hidden');
     const line = document.createElement('div');
@@ -353,138 +356,270 @@
   }
   function clearLog(el) { el.innerHTML = ''; el.classList.add('hidden'); }
 
-  // ---- Key handling ----
-  function updateKeyStatus() {
-    if (apiKey) {
-      keyStatus.textContent = 'API key loaded (' + apiKey.slice(0, 6) + '…)';
-      keyStatus.classList.add('ok');
-      keyInput.value = apiKey;
-      init();
-    } else {
-      keyStatus.textContent = 'No API key';
-      keyStatus.classList.remove('ok');
-      pagePanel.classList.add('hidden');
-      addPanel.classList.add('hidden');
-      delPanel.classList.add('hidden');
-      verifyPanel.classList.add('hidden');
+  function parsePageUrl(url) {
+    const m = url.match(/\/v2\/links\/([0-9a-f-]{36})\/([0-9a-f-]{36})/i);
+    return m ? { orgId: m[1], pageId: m[2] } : null;
+  }
+  function normalizeUrl(u) { return u.trim().replace(/\/+$/, ''); }
+  function parseUrlLines(text) {
+    const seen = new Set(), out = [];
+    for (const line of text.split(/\r?\n/)) {
+      const t = normalizeUrl(line);
+      if (!t || seen.has(t)) continue;
+      seen.add(t); out.push(t);
+    }
+    return out;
+  }
+
+  $('loadPage').addEventListener('click', loadDestPage);
+  $('pageUrl').value = localStorage.getItem(PAGEURL_STORAGE) || '';
+
+  async function loadDestPage() {
+    const urlVal = $('pageUrl').value.trim();
+    const parsed = parsePageUrl(urlVal);
+    if (!parsed) return alert('URL must look like https://fanstack.io/v2/links/{orgId}/{pageId}/edit');
+    if (!jwt) return alert('Paste your JWT in the Auth tab first.');
+    localStorage.setItem(PAGEURL_STORAGE, urlVal);
+    destOrgId = parsed.orgId; destPageId = parsed.pageId;
+    $('pageMeta').innerHTML = '<span>Loading&hellip;</span>';
+    try {
+      destPageData = await apiInternal(`/organizations/${destOrgId}/link-pages/${destPageId}`);
+      const items = destPageData.items || [];
+      $('pageMeta').innerHTML = `
+        <span>Page: <b>${escapeHtml(destPageData.name || '(unnamed)')}</b></span>
+        <span>Destinations: <b>${items.length}</b></span>
+        <span>Type: <b>${escapeHtml(destPageData.pageType || 'direct')}</b></span>
+      `;
+      $('toggleDest').classList.remove('hidden');
+      $('copyDest').classList.remove('hidden');
+      renderDestList();
+    } catch (e) {
+      $('pageMeta').innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}${e.status===401?' (JWT expired?)':''}</span>`;
     }
   }
 
-  $('saveKey').addEventListener('click', () => {
-    const v = keyInput.value.trim();
-    if (!v) return alert('Enter an API key');
-    apiKey = v;
-    localStorage.setItem(KEY_STORAGE, v);
-    updateKeyStatus();
+  function renderDestList() {
+    const el = $('destList');
+    el.innerHTML = '';
+    const items = (destPageData?.items || []).slice().sort((a,b) => (a.sortOrder||0) - (b.sortOrder||0));
+    items.forEach(it => {
+      const div = document.createElement('div');
+      div.className = 'link-item';
+      div.innerHTML = `<a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">${escapeHtml(it.url)}</a>
+                       <span style="color:var(--text-dim)">${it.isActive ? '' : 'inactive'}</span>`;
+      el.appendChild(div);
+    });
+  }
+
+  $('toggleDest').addEventListener('click', () => {
+    $('destList').classList.toggle('hidden');
+    $('toggleDest').textContent = $('destList').classList.contains('hidden') ? 'Show current destinations' : 'Hide current destinations';
   });
 
-  $('clearKey').addEventListener('click', () => {
-    if (!confirm('Clear stored API key?')) return;
-    apiKey = '';
-    localStorage.removeItem(KEY_STORAGE);
-    keyInput.value = '';
-    updateKeyStatus();
+  $('copyDest').addEventListener('click', () => {
+    const text = (destPageData?.items || []).map(i => i.url).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      $('copyDest').textContent = 'Copied!';
+      setTimeout(() => $('copyDest').textContent = 'Copy all URLs', 1200);
+    });
   });
 
-  // ---- Init: load domains + pages ----
-  async function init() {
+  async function addDestFlow(dryRun) {
+    clearLog($('destAddLog'));
+    if (!destPageData) return log($('destAddLog'), 'Load a page first.', 'err');
+    const parsed = parseUrlLines($('destAddInput').value);
+    if (!parsed.length) return log($('destAddLog'), 'No URLs parsed.', 'err');
+
+    const existing = new Set((destPageData.items || []).map(i => i.url));
+    const toAdd = [], dupes = [];
+    for (const u of parsed) (existing.has(u) ? dupes : toAdd).push(u);
+
+    log($('destAddLog'), `Parsed ${parsed.length} · Already present: ${dupes.length} · New: ${toAdd.length}`, 'info');
+    dupes.forEach(u => log($('destAddLog'), `SKIP  ${u}`, 'skip'));
+
+    if (dryRun) {
+      toAdd.forEach(u => log($('destAddLog'), `WOULD ADD  ${u}`, 'info'));
+      log($('destAddLog'), 'Dry run complete.', 'info');
+      return;
+    }
+    if (!toAdd.length) return log($('destAddLog'), 'Nothing to add.', 'info');
+    if (!confirm(`Add ${toAdd.length} destination(s)?`)) return;
+
+    $('destAddBtn').disabled = true;
+    const startSort = ((destPageData.items || []).reduce((m,i) => Math.max(m, i.sortOrder ?? 0), -1)) + 1;
+    let ok = 0, fail = 0;
+    for (let i = 0; i < toAdd.length; i++) {
+      const url = toAdd[i];
+      const body = {
+        title: 'Destination', url, itemType: 'link',
+        sortOrder: startSort + i, isActive: true, color: '#6366f1',
+        buttonHeightMultiplier: 3, buttonFontSize: 15,
+      };
+      try {
+        await apiInternal(`/organizations/${destOrgId}/link-pages/${destPageId}/items`, {
+          method: 'POST', body: JSON.stringify(body),
+        });
+        log($('destAddLog'), `OK    ${url}`, 'ok'); ok++;
+      } catch (e) {
+        log($('destAddLog'), `FAIL  ${url} — ${e.message}${e.status===401?' (JWT expired)':''}`, 'err');
+        fail++;
+        if (e.status === 401) break;
+      }
+    }
+    log($('destAddLog'), `Done. Added: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
+    $('destAddBtn').disabled = false;
+    await loadDestPage();
+  }
+  $('destAddBtn').addEventListener('click', () => addDestFlow(false));
+  $('destAddDry').addEventListener('click', () => addDestFlow(true));
+
+  $('destDelBtn').addEventListener('click', async () => {
+    clearLog($('destDelLog'));
+    if (!destPageData) return log($('destDelLog'), 'Load a page first.', 'err');
+    const parsed = parseUrlLines($('destDelInput').value);
+    if (!parsed.length) return log($('destDelLog'), 'No URLs parsed.', 'err');
+
+    const byUrl = new Map();
+    (destPageData.items || []).forEach(i => byUrl.set(i.url, i));
+
+    const toDelete = [], missing = [];
+    for (const u of parsed) {
+      const item = byUrl.get(u);
+      if (item) toDelete.push(item); else missing.push(u);
+    }
+    log($('destDelLog'), `Parsed ${parsed.length} · Found: ${toDelete.length} · Missing: ${missing.length}`, 'info');
+    missing.forEach(u => log($('destDelLog'), `MISS  ${u}`, 'skip'));
+
+    if (!toDelete.length) return log($('destDelLog'), 'Nothing to delete.', 'info');
+    if (!confirm(`Delete ${toDelete.length} destination(s)?`)) return;
+
+    $('destDelBtn').disabled = true;
+    let ok = 0, fail = 0;
+    for (const item of toDelete) {
+      try {
+        await apiInternal(`/organizations/${destOrgId}/link-pages/${destPageId}/items/${item.id}`, { method: 'DELETE' });
+        log($('destDelLog'), `DEL   ${item.url}`, 'ok'); ok++;
+      } catch (e) {
+        log($('destDelLog'), `FAIL  ${item.url} — ${e.message}${e.status===401?' (JWT expired)':''}`, 'err');
+        fail++;
+        if (e.status === 401) break;
+      }
+    }
+    log($('destDelLog'), `Done. Deleted: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
+    $('destDelBtn').disabled = false;
+    await loadDestPage();
+  });
+
+  $('destVerifyBtn').addEventListener('click', () => {
+    if (!destPageData) return alert('Load a page first.');
+    const parsed = parseUrlLines($('destVerifyInput').value);
+    if (!parsed.length) return alert('No URLs parsed.');
+    const existing = new Set((destPageData.items || []).map(i => i.url));
+    let found = 0;
+    const el = $('destVerifyResults');
+    el.innerHTML = '';
+    parsed.forEach(u => {
+      const hit = existing.has(u);
+      if (hit) found++;
+      const div = document.createElement('div');
+      div.className = 'link-item' + (hit ? ' hit' : '');
+      div.innerHTML = `<span>${escapeHtml(u)}</span><span>${hit ? '✓ found' : '× missing'}</span>`;
+      el.appendChild(div);
+    });
+    el.classList.remove('hidden');
+    $('destVerifySummary').classList.remove('hidden');
+    $('destVerifySummary').innerHTML = `
+      <div class="stat">Total: <b>${parsed.length}</b></div>
+      <div class="stat found">Found: <b>${found}</b></div>
+      <div class="stat missing">Missing: <b>${parsed.length - found}</b></div>
+    `;
+  });
+
+  async function initShortLinks() {
+    if (!apiKey) { alert('Set an API key in the Auth tab first.'); return; }
     try {
-      pageSelect.innerHTML = '<option>Loading...</option>';
-      hostSelect.innerHTML = '<option>Loading...</option>';
-      [domains, pages] = await Promise.all([
-        fetchAllPaged('/domains'),
-        fetchAllPaged('/pages')
-      ]);
+      $('pageSelect').innerHTML = '<option>Loading...</option>';
+      $('hostSelect').innerHTML = '<option>Loading...</option>';
+      [domains, pages] = await Promise.all([fetchAllPaged('/domains'), fetchAllPaged('/pages')]);
       populateHosts();
       populatePages();
-      pagePanel.classList.remove('hidden');
-      addPanel.classList.remove('hidden');
-      delPanel.classList.remove('hidden');
-      verifyPanel.classList.remove('hidden');
       await onPageChange();
     } catch (e) {
-      alert('Failed to load: ' + e.message + '\n\nCheck your API key. If you see a CORS error, the API must be called from an allowed origin.');
+      alert('Failed to load: ' + e.message);
     }
   }
 
   function populateHosts() {
-    hostSelect.innerHTML = '';
+    $('hostSelect').innerHTML = '';
     domains.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.host;
       opt.textContent = d.host + (d.verified ? '' : ' (unverified)');
-      hostSelect.appendChild(opt);
+      $('hostSelect').appendChild(opt);
     });
-    const savedHost = localStorage.getItem(HOST_STORAGE);
-    if (savedHost && domains.some(d => d.host === savedHost)) {
-      hostSelect.value = savedHost;
-    }
-    currentHost = hostSelect.value;
+    const saved = localStorage.getItem(HOST_STORAGE);
+    if (saved && domains.some(d => d.host === saved)) $('hostSelect').value = saved;
+    currentHost = $('hostSelect').value;
   }
 
   function populatePages() {
-    pageSelect.innerHTML = '';
-    pages.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    $('pageSelect').innerHTML = '';
+    pages.sort((a,b) => (a.name||'').localeCompare(b.name||''));
     pages.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = `${p.name || '(unnamed)'} — ${p.publishedLinkCount} link${p.publishedLinkCount === 1 ? '' : 's'}`;
-      pageSelect.appendChild(opt);
+      opt.textContent = `${p.name || '(unnamed)'} — ${p.publishedLinkCount} link${p.publishedLinkCount===1?'':'s'}`;
+      $('pageSelect').appendChild(opt);
     });
-    const savedPage = localStorage.getItem(PAGE_STORAGE);
-    if (savedPage && pages.some(p => p.id === savedPage)) {
-      pageSelect.value = savedPage;
-    }
-    currentPageId = pageSelect.value;
+    const saved = localStorage.getItem(PAGE_STORAGE);
+    if (saved && pages.some(p => p.id === saved)) $('pageSelect').value = saved;
+    currentPageId = $('pageSelect').value;
   }
 
-  $('refreshPages').addEventListener('click', () => init());
-  pageSelect.addEventListener('change', onPageChange);
-  hostSelect.addEventListener('change', () => {
-    currentHost = hostSelect.value;
+  $('refreshPages').addEventListener('click', () => initShortLinks());
+  $('pageSelect').addEventListener('change', onPageChange);
+  $('hostSelect').addEventListener('change', () => {
+    currentHost = $('hostSelect').value;
     localStorage.setItem(HOST_STORAGE, currentHost);
   });
 
   async function onPageChange() {
-    currentPageId = pageSelect.value;
+    currentPageId = $('pageSelect').value;
     localStorage.setItem(PAGE_STORAGE, currentPageId);
-    pageMeta.innerHTML = '<span>Loading links…</span>';
-    linksList.innerHTML = '';
-    linksList.classList.add('hidden');
+    $('linkPageMeta').innerHTML = '<span>Loading links&hellip;</span>';
+    $('linksList').innerHTML = '';
+    $('linksList').classList.add('hidden');
     try {
       const all = await fetchAllPaged('/links');
-      currentLinks = all.filter(l => l.linkPageId === currentPageId ||
-                                     (l.linkPageIds && l.linkPageIds.includes(currentPageId)));
+      currentLinks = all.filter(l => l.linkPageId === currentPageId || (l.linkPageIds||[]).includes(currentPageId));
       const p = pages.find(x => x.id === currentPageId);
-      pageMeta.innerHTML = `
+      $('linkPageMeta').innerHTML = `
         <span>Page: <b>${escapeHtml(p?.name || '')}</b></span>
         <span>Links on this page: <b>${currentLinks.length}</b></span>
-        <span>Total in org (all pages): <b>${all.length}</b></span>
+        <span>Total in org: <b>${all.length}</b></span>
       `;
       renderLinksList();
     } catch (e) {
-      pageMeta.innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}</span>`;
+      $('linkPageMeta').innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}</span>`;
     }
   }
 
   function renderLinksList() {
-    linksList.innerHTML = '';
-    currentLinks
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .forEach(l => {
-        const div = document.createElement('div');
-        div.className = 'link-item';
-        div.innerHTML = `<a href="${escapeAttr(l.fullUrl)}" target="_blank" rel="noopener">${escapeHtml(l.id)}</a>
-                         <span style="color:var(--text-dim)">${l.isActive ? '' : 'inactive'}</span>`;
-        linksList.appendChild(div);
-      });
+    const el = $('linksList');
+    el.innerHTML = '';
+    currentLinks.sort((a,b) => a.id.localeCompare(b.id)).forEach(l => {
+      const div = document.createElement('div');
+      div.className = 'link-item';
+      div.innerHTML = `<a href="${escapeAttr(l.fullUrl)}" target="_blank" rel="noopener">${escapeHtml(l.id)}</a>
+                       <span style="color:var(--text-dim)">${l.isActive ? '' : 'inactive'}</span>`;
+      el.appendChild(div);
+    });
   }
 
   $('toggleLinks').addEventListener('click', () => {
-    linksList.classList.toggle('hidden');
-    $('toggleLinks').textContent = linksList.classList.contains('hidden') ? 'Show current links' : 'Hide current links';
+    $('linksList').classList.toggle('hidden');
+    $('toggleLinks').textContent = $('linksList').classList.contains('hidden') ? 'Show current links' : 'Hide current links';
   });
-
   $('copyLinks').addEventListener('click', () => {
     const text = currentLinks.map(l => l.fullUrl).join('\n');
     navigator.clipboard.writeText(text).then(() => {
@@ -493,125 +628,108 @@
     });
   });
 
-  // ---- ADD ----
-  async function addFlow(dryRun) {
-    clearLog(addLog);
-    const raw = $('addInput').value;
-    const parsed = parseLines(raw, currentHost);
-    if (!parsed.length) { log(addLog, 'No valid links parsed.', 'err'); return; }
+  function parseShortLink(line, defaultHost) {
+    line = line.trim();
+    if (!line) return null;
+    let s = line.replace(/^https?:\/\//i, '').replace(/^\/+/, '').split('?')[0].split('#')[0].replace(/\/+$/, '');
+    if (s.includes('/')) {
+      const [host, ...rest] = s.split('/');
+      const slug = rest.join('/');
+      if (!slug) return null;
+      return { host, slug, id: `${host}/${slug}` };
+    }
+    if (!defaultHost) return null;
+    return { host: defaultHost, slug: s, id: `${defaultHost}/${s}` };
+  }
+  function parseShortLinkLines(text, defaultHost) {
+    const seen = new Set(), out = [];
+    for (const line of text.split(/\r?\n/)) {
+      const p = parseShortLink(line, defaultHost);
+      if (!p || seen.has(p.id)) continue;
+      seen.add(p.id); out.push(p);
+    }
+    return out;
+  }
 
+  async function addLinksFlow(dryRun) {
+    clearLog($('addLog'));
+    const parsed = parseShortLinkLines($('addInput').value, currentHost);
+    if (!parsed.length) return log($('addLog'), 'No valid links parsed.', 'err');
     const existing = new Set(currentLinks.map(l => l.id));
-    const toAdd = [];
-    const dupes = [];
-    for (const p of parsed) {
-      if (existing.has(p.id)) dupes.push(p);
-      else toAdd.push(p);
-    }
-
-    log(addLog, `Parsed ${parsed.length} · Duplicates (already on this page): ${dupes.length} · New to add: ${toAdd.length}`, 'info');
-    dupes.forEach(d => log(addLog, `SKIP  ${d.id} (already exists on page)`, 'skip'));
-
-    if (dryRun) {
-      toAdd.forEach(t => log(addLog, `WOULD ADD  ${t.id}`, 'info'));
-      log(addLog, 'Dry run complete.', 'info');
-      return;
-    }
-
-    if (!toAdd.length) { log(addLog, 'Nothing to add.', 'info'); return; }
-    if (!confirm(`Add ${toAdd.length} link(s) to selected page?`)) return;
-
+    const toAdd = [], dupes = [];
+    for (const p of parsed) (existing.has(p.id) ? dupes : toAdd).push(p);
+    log($('addLog'), `Parsed ${parsed.length} · Duplicates: ${dupes.length} · New: ${toAdd.length}`, 'info');
+    dupes.forEach(d => log($('addLog'), `SKIP  ${d.id}`, 'skip'));
+    if (dryRun) { toAdd.forEach(t => log($('addLog'), `WOULD ADD  ${t.id}`, 'info')); return; }
+    if (!toAdd.length) return log($('addLog'), 'Nothing to add.', 'info');
+    if (!confirm(`Add ${toAdd.length} link(s)?`)) return;
     $('addBtn').disabled = true;
     let ok = 0, fail = 0;
     for (const p of toAdd) {
       try {
-        await api('/links', {
-          method: 'POST',
-          body: JSON.stringify({ host: p.host, slug: p.slug, pageId: currentPageId })
-        });
-        log(addLog, `OK    ${p.id}`, 'ok');
-        ok++;
+        await apiExternal('/links', { method: 'POST', body: JSON.stringify({ host: p.host, slug: p.slug, pageId: currentPageId }) });
+        log($('addLog'), `OK    ${p.id}`, 'ok'); ok++;
       } catch (e) {
-        log(addLog, `FAIL  ${p.id} — ${e.message}`, 'err');
-        fail++;
+        log($('addLog'), `FAIL  ${p.id} — ${e.message}`, 'err'); fail++;
       }
     }
-    log(addLog, `Done. Added: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
+    log($('addLog'), `Done. Added: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
     $('addBtn').disabled = false;
     await onPageChange();
   }
+  $('addBtn').addEventListener('click', () => addLinksFlow(false));
+  $('addDryRun').addEventListener('click', () => addLinksFlow(true));
 
-  $('addBtn').addEventListener('click', () => addFlow(false));
-  $('addDryRun').addEventListener('click', () => addFlow(true));
-
-  // ---- DELETE ----
   $('delBtn').addEventListener('click', async () => {
-    clearLog(delLog);
-    const raw = $('delInput').value;
-    const parsed = parseLines(raw, currentHost);
-    if (!parsed.length) { log(delLog, 'No valid links parsed.', 'err'); return; }
-
-    log(delLog, `Parsed ${parsed.length} link(s) to delete.`, 'info');
-    if (!confirm(`Delete ${parsed.length} link(s)? This cannot be undone.`)) return;
-
+    clearLog($('delLog'));
+    const parsed = parseShortLinkLines($('delInput').value, currentHost);
+    if (!parsed.length) return log($('delLog'), 'No valid links.', 'err');
+    log($('delLog'), `Parsed ${parsed.length} link(s).`, 'info');
+    if (!confirm(`Delete ${parsed.length} link(s)?`)) return;
     $('delBtn').disabled = true;
     let ok = 0, fail = 0, missing = 0;
     for (const p of parsed) {
       try {
-        await api(`/links/${encodeURIComponent(p.host)}/${encodeURIComponent(p.slug)}`, { method: 'DELETE' });
-        log(delLog, `DEL   ${p.id}`, 'ok');
-        ok++;
+        await apiExternal(`/links/${encodeURIComponent(p.host)}/${encodeURIComponent(p.slug)}`, { method: 'DELETE' });
+        log($('delLog'), `DEL   ${p.id}`, 'ok'); ok++;
       } catch (e) {
-        if (e.status === 404) {
-          log(delLog, `MISS  ${p.id} (not found)`, 'skip');
-          missing++;
-        } else {
-          log(delLog, `FAIL  ${p.id} — ${e.message}`, 'err');
-          fail++;
-        }
+        if (e.status === 404) { log($('delLog'), `MISS  ${p.id}`, 'skip'); missing++; }
+        else { log($('delLog'), `FAIL  ${p.id} — ${e.message}`, 'err'); fail++; }
       }
     }
-    log(delLog, `Done. Deleted: ${ok} · Not found: ${missing} · Failed: ${fail}`, ok ? 'ok' : 'err');
+    log($('delLog'), `Done. Deleted: ${ok} · Not found: ${missing} · Failed: ${fail}`, ok ? 'ok' : 'err');
     $('delBtn').disabled = false;
     await onPageChange();
   });
 
-  // ---- VERIFY ----
   $('verifyBtn').addEventListener('click', async () => {
-    verifyResults.innerHTML = '';
-    verifyResults.classList.add('hidden');
-    verifySummary.classList.add('hidden');
-
-    const raw = $('verifyInput').value;
-    const parsed = parseLines(raw, currentHost);
+    $('verifyResults').innerHTML = '';
+    $('verifyResults').classList.add('hidden');
+    $('verifySummary').classList.add('hidden');
+    const parsed = parseShortLinkLines($('verifyInput').value, currentHost);
     if (!parsed.length) return alert('No valid links parsed.');
-
     const scope = $('verifyScope').value;
     $('verifyBtn').disabled = true;
     try {
-      let pool;
-      if (scope === 'page') {
-        pool = new Set(currentLinks.map(l => l.id));
-      } else {
-        const all = await fetchAllPaged('/links');
-        pool = new Set(all.map(l => l.id));
-      }
+      const pool = scope === 'page'
+        ? new Set(currentLinks.map(l => l.id))
+        : new Set((await fetchAllPaged('/links')).map(l => l.id));
       let found = 0;
       parsed.forEach(p => {
-        const div = document.createElement('div');
         const hit = pool.has(p.id);
         if (hit) found++;
+        const div = document.createElement('div');
         div.className = 'link-item' + (hit ? ' hit' : '');
-        div.innerHTML = `<span>${escapeHtml(p.id)}</span>
-                         <span>${hit ? '✓ found' : '× missing'}</span>`;
-        verifyResults.appendChild(div);
+        div.innerHTML = `<span>${escapeHtml(p.id)}</span><span>${hit ? '✓ found' : '× missing'}</span>`;
+        $('verifyResults').appendChild(div);
       });
-      verifyResults.classList.remove('hidden');
-      verifySummary.classList.remove('hidden');
-      verifySummary.innerHTML = `
+      $('verifyResults').classList.remove('hidden');
+      $('verifySummary').classList.remove('hidden');
+      $('verifySummary').innerHTML = `
         <div class="stat">Total: <b>${parsed.length}</b></div>
         <div class="stat found">Found: <b>${found}</b></div>
         <div class="stat missing">Missing: <b>${parsed.length - found}</b></div>
-        <div class="stat">Scope: <b>${scope === 'page' ? 'selected page' : 'entire org'}</b></div>
+        <div class="stat">Scope: <b>${scope === 'page' ? 'this page' : 'entire org'}</b></div>
       `;
     } catch (e) {
       alert('Verify failed: ' + e.message);
@@ -619,14 +737,11 @@
     $('verifyBtn').disabled = false;
   });
 
-  // ---- utils ----
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function escapeAttr(s) { return escapeHtml(s); }
 
-  // ---- boot ----
-  updateKeyStatus();
+  updateStatus();
+  setInterval(updateStatus, 30000);
 })();
 </script>
 </body>
