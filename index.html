@@ -98,13 +98,19 @@
         <button id="saveJwt">Save Token</button>
         <button class="ghost" id="clearJwt">Clear</button>
       </div>
-      <details style="margin-top:12px;">
+      <details style="margin-top:12px;" open>
         <summary>How to get this token</summary>
         <div class="hint">
-          1. Log into <a href="https://fanstack.io" target="_blank">fanstack.io</a>.<br>
-          2. Open DevTools (F12) → <b>Network</b> tab → filter <code>whoami</code> or <code>link-pages</code>.<br>
-          3. Reload the page. Click any request → <b>Headers</b> → find <code>authorization: Bearer eyJ...</code>.<br>
-          4. Copy everything after <code>Bearer </code> and paste here.<br>
+          <b>Easy way (bookmarklet):</b><br>
+          1. Drag this link to your bookmarks bar:
+          <a class="bookmarklet" href="javascript:(async()=>{try{const r=await fetch('/api/control-plane/auth/refresh',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({refreshToken:null})});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();const t=d.sessionToken;if(!t)throw new Error('No sessionToken in response');await navigator.clipboard.writeText(t);alert('FanStack JWT copied to clipboard! ('+t.length+' chars)\nPaste it into FanStack Manager.');}catch(e){alert('Failed: '+e.message+'\n\nRun this bookmarklet from an open fanstack.io tab while logged in.');}})();void(0);" style="display:inline-block; padding:4px 10px; margin:0 4px; background:var(--panel-2); border:1px solid var(--text-dim); border-radius:6px; color:var(--text); font-weight:500;">📋 Grab FanStack JWT</a><br>
+          2. Open <a href="https://fanstack.io" target="_blank">fanstack.io</a> (must be logged in) and click the bookmark.<br>
+          3. Come back here, paste, click Save Token.<br><br>
+
+          <b>Manual way (if bookmarklet fails):</b><br>
+          1. Log into fanstack.io. Open DevTools (F12) → <b>Network</b> tab → filter <code>link-pages</code>.<br>
+          2. Reload. Click any request → <b>Headers</b> → find <code>authorization: Bearer eyJ...</code>.<br>
+          3. Copy everything after <code>Bearer </code> and paste here.<br><br>
           The token is stored in this browser only; it's forwarded to fanstack.io through our proxy per request.
         </div>
       </details>
