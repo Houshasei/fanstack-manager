@@ -484,7 +484,23 @@
       // Clear password field for safety
       $('loginPassword').value = '';
       updateStatus();
-      $('loginBtn').textContent = 'Logged in ✓';
+
+      // Also auto-fetch the Links API key so the Short Links tab is ready
+      if (data.organizationId) {
+        try {
+          const keyRes = await apiInternal(`/links/api/v1/organizations/${data.organizationId}/api-key/reveal`);
+          if (keyRes?.key) {
+            apiKey = keyRes.key;
+            localStorage.setItem(KEY_STORAGE, apiKey);
+            $('apiKey').value = apiKey;
+            updateStatus();
+          }
+        } catch (keyErr) {
+          console.warn('API key fetch failed:', keyErr.message);
+        }
+      }
+
+      $('loginBtn').textContent = 'Logged in ✓ (API key fetched)';
       setTimeout(() => { $('loginBtn').textContent = orig; }, 1500);
     } catch (e) {
       $('loginBtn').textContent = 'Failed: ' + (e.message || 'error');
