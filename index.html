@@ -91,6 +91,20 @@
 
   <div class="tab-panel" data-panel="auth">
     <div class="panel">
+      <div class="panel-title">Log In (auto-fetches refresh token)</div>
+      <label for="loginEmail">Fanstack.io email (or username)</label>
+      <input type="email" id="loginEmail" autocomplete="username" placeholder="you@example.com">
+      <label for="loginPassword" style="margin-top:10px;">Password</label>
+      <input type="password" id="loginPassword" autocomplete="current-password" placeholder="•••••••••">
+      <div class="actions">
+        <button id="loginBtn">Log In</button>
+      </div>
+      <div class="hint" style="margin-top:8px;">
+        Credentials are sent through your Cloudflare Pages proxy to fanstack.io and never stored — only the resulting refresh token is saved in this browser's localStorage. Google-login users can't use this; use the manual refresh-token paste below.
+      </div>
+    </div>
+
+    <div class="panel">
       <div class="panel-title">Refresh Token (Auto-refreshing, ~14 day lifespan)</div>
       <label for="refreshTokenInput">Paste once. The app will auto-refresh your JWT before every call. Rotates every use (~14 days validity per rotation).</label>
       <input type="password" id="refreshTokenInput" placeholder="0786768606184264BC452767..." autocomplete="off">
@@ -447,6 +461,36 @@
   });
   $('clearKey').addEventListener('click', () => {
     apiKey = ''; localStorage.removeItem(KEY_STORAGE); $('apiKey').value = ''; updateStatus();
+  });
+
+  $('loginBtn').addEventListener('click', async () => {
+    const identifier = $('loginEmail').value.trim();
+    const password = $('loginPassword').value;
+    if (!identifier || !password) return flash($('loginBtn'), 'Missing fields', 'err');
+    $('loginBtn').disabled = true;
+    const orig = $('loginBtn').textContent;
+    $('loginBtn').textContent = 'Signing in…';
+    try {
+      const r = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data?.title || data?.error || `HTTP ${r.status}`);
+      if (data.sessionToken) { jwt = data.sessionToken; localStorage.setItem(JWT_STORAGE, jwt); }
+      if (data.refreshToken) { refreshToken = data.refreshToken; localStorage.setItem(REFRESH_STORAGE, refreshToken); $('refreshTokenInput').value = refreshToken; }
+      if (data.organizationId) localStorage.setItem(DESTORG_STORAGE, data.organizationId);
+      // Clear password field for safety
+      $('loginPassword').value = '';
+      updateStatus();
+      $('loginBtn').textContent = 'Logged in ✓';
+      setTimeout(() => { $('loginBtn').textContent = orig; }, 1500);
+    } catch (e) {
+      $('loginBtn').textContent = 'Failed: ' + (e.message || 'error');
+      setTimeout(() => { $('loginBtn').textContent = orig; }, 2500);
+    }
+    $('loginBtn').disabled = false;
   });
 
   $('saveRefresh').addEventListener('click', async () => {
