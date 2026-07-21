@@ -172,35 +172,18 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title">Add Destinations</div>
-      <label for="destAddInput">Paste destination URLs (one per line). Duplicates against existing are skipped.</label>
-      <textarea id="destAddInput" rows="8" placeholder="https://t.me/username1&#10;https://t.me/username2"></textarea>
+      <div class="panel-title">Manage Destinations</div>
+      <label for="destInput">Paste destination URLs (one per line). Pick an action below.</label>
+      <textarea id="destInput" rows="10" placeholder="https://t.me/username1&#10;https://t.me/username2"></textarea>
       <div class="actions">
-        <button id="destAddBtn">Add Destinations</button>
-        <button class="ghost" id="destAddDry">Dry Run</button>
-      </div>
-      <div class="log hidden" id="destAddLog"></div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-title">Delete Destinations</div>
-      <label for="destDelInput">Paste destination URLs to delete (one per line). Matched against exact URL.</label>
-      <textarea id="destDelInput" rows="8" placeholder="https://t.me/username1"></textarea>
-      <div class="actions">
-        <button class="danger" id="destDelBtn">Delete Destinations</button>
-      </div>
-      <div class="log hidden" id="destDelLog"></div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-title">Verify Destinations</div>
-      <label for="destVerifyInput">Paste destination URLs to check.</label>
-      <textarea id="destVerifyInput" rows="8" placeholder="https://t.me/username1"></textarea>
-      <div class="actions">
-        <button id="destVerifyBtn">Verify</button>
+        <button id="destAddBtn">Add</button>
+        <button class="danger" id="destDelBtn">Delete</button>
+        <button class="ghost" id="destVerifyBtn">Verify</button>
+        <button class="ghost" id="destAddDry">Dry Run (Add)</button>
       </div>
       <div class="verify-summary hidden" id="destVerifySummary"></div>
       <div class="links-list hidden" id="destVerifyResults"></div>
+      <div class="log hidden" id="destLog"></div>
     </div>
 
     <div class="panel">
@@ -533,6 +516,7 @@
     destOrgId = orgId;
     destPageId = pageId;
     localStorage.setItem(DESTLASTPAGE_STORAGE, val);
+    clearAllInputs();
     fetchLoadedDestPage();
   });
 
@@ -594,7 +578,6 @@
       $('copyDest').classList.remove('hidden');
       renderDestList();
       updateGeoMeta();
-      clearAllInputs();
     } catch (e) {
       $('pageMeta').innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}${e.status===401?' (JWT expired?)':''}</span>`;
     }
@@ -607,6 +590,7 @@
     if (!jwt) { $('pageMeta').innerHTML = '<span style="color:var(--red)">Paste your JWT in the Auth tab first.</span>'; return; }
     localStorage.setItem(PAGEURL_STORAGE, urlVal);
     destOrgId = parsed.orgId; destPageId = parsed.pageId;
+    clearAllInputs();
     $('pageMeta').innerHTML = '<span>Loading&hellip;</span>';
     try {
       destPageData = await apiInternal(`/links/api/v1/organizations/${destOrgId}/link-pages/${destPageId}`);
@@ -619,7 +603,6 @@
       $('copyDest').classList.remove('hidden');
       renderDestList();
       updateGeoMeta();
-      clearAllInputs();
     } catch (e) {
       $('pageMeta').innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}${e.status===401?' (JWT expired?)':''}</span>`;
     }
@@ -669,8 +652,8 @@
   }
 
   function clearAllInputs() {
-    ['destAddInput','destDelInput','destVerifyInput','geoInput'].forEach(id => { const el = $(id); if (el) el.value = ''; });
-    ['destAddLog','destDelLog','geoLog'].forEach(id => { const el = $(id); if (el) clearLog(el); });
+    ['destInput','geoInput'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+    ['destLog','geoLog'].forEach(id => { const el = $(id); if (el) clearLog(el); });
     ['destVerifySummary','destVerifyResults','geoList'].forEach(id => { const el = $(id); if (el) { el.classList.add('hidden'); el.innerHTML = ''; } });
     $('geoShowBtn').textContent = 'Show currently blocked';
   }
@@ -684,24 +667,26 @@
   });
 
   async function addDestFlow(dryRun) {
-    clearLog($('destAddLog'));
-    if (!destPageData) return log($('destAddLog'), 'Load a page first.', 'err');
-    const parsed = parseUrlLines($('destAddInput').value);
-    if (!parsed.length) return log($('destAddLog'), 'No URLs parsed.', 'err');
+    clearLog($('destLog'));
+    $('destVerifySummary').classList.add('hidden');
+    $('destVerifyResults').classList.add('hidden');
+    if (!destPageData) return log($('destLog'), 'Load a page first.', 'err');
+    const parsed = parseUrlLines($('destInput').value);
+    if (!parsed.length) return log($('destLog'), 'No URLs parsed.', 'err');
 
     const existing = new Set((destPageData.items || []).map(i => i.url));
     const toAdd = [], dupes = [];
     for (const u of parsed) (existing.has(u) ? dupes : toAdd).push(u);
 
-    log($('destAddLog'), `Parsed ${parsed.length} · Already present: ${dupes.length} · New: ${toAdd.length}`, 'info');
-    dupes.forEach(u => log($('destAddLog'), `SKIP  ${u}`, 'skip'));
+    log($('destLog'), `Parsed ${parsed.length} · Already present: ${dupes.length} · New: ${toAdd.length}`, 'info');
+    dupes.forEach(u => log($('destLog'), `SKIP  ${u}`, 'skip'));
 
     if (dryRun) {
-      toAdd.forEach(u => log($('destAddLog'), `WOULD ADD  ${u}`, 'info'));
-      log($('destAddLog'), 'Dry run complete.', 'info');
+      toAdd.forEach(u => log($('destLog'), `WOULD ADD  ${u}`, 'info'));
+      log($('destLog'), 'Dry run complete.', 'info');
       return;
     }
-    if (!toAdd.length) return log($('destAddLog'), 'Nothing to add.', 'info');
+    if (!toAdd.length) return log($('destLog'), 'Nothing to add.', 'info');
     $('destAddBtn').disabled = true;
     const startSort = ((destPageData.items || []).reduce((m,i) => Math.max(m, i.sortOrder ?? 0), -1)) + 1;
     let ok = 0, fail = 0;
@@ -716,14 +701,14 @@
         await apiInternal(`/links/api/v1/organizations/${destOrgId}/link-pages/${destPageId}/items`, {
           method: 'POST', body: JSON.stringify(body),
         });
-        log($('destAddLog'), `OK    ${url}`, 'ok'); ok++;
+        log($('destLog'), `OK    ${url}`, 'ok'); ok++;
       } catch (e) {
-        log($('destAddLog'), `FAIL  ${url} — ${e.message}${e.status===401?' (JWT expired)':''}`, 'err');
+        log($('destLog'), `FAIL  ${url} — ${e.message}${e.status===401?' (JWT expired)':''}`, 'err');
         fail++;
         if (e.status === 401) break;
       }
     }
-    log($('destAddLog'), `Done. Added: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
+    log($('destLog'), `Done. Added: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
     $('destAddBtn').disabled = false;
     await fetchLoadedDestPage();
     // update cached count
@@ -734,10 +719,12 @@
   $('destAddDry').addEventListener('click', () => addDestFlow(true));
 
   $('destDelBtn').addEventListener('click', async () => {
-    clearLog($('destDelLog'));
-    if (!destPageData) return log($('destDelLog'), 'Load a page first.', 'err');
-    const parsed = parseUrlLines($('destDelInput').value);
-    if (!parsed.length) return log($('destDelLog'), 'No URLs parsed.', 'err');
+    clearLog($('destLog'));
+    $('destVerifySummary').classList.add('hidden');
+    $('destVerifyResults').classList.add('hidden');
+    if (!destPageData) return log($('destLog'), 'Load a page first.', 'err');
+    const parsed = parseUrlLines($('destInput').value);
+    if (!parsed.length) return log($('destLog'), 'No URLs parsed.', 'err');
 
     const byUrl = new Map();
     (destPageData.items || []).forEach(i => byUrl.set(i.url, i));
@@ -747,23 +734,23 @@
       const item = byUrl.get(u);
       if (item) toDelete.push(item); else missing.push(u);
     }
-    log($('destDelLog'), `Parsed ${parsed.length} · Found: ${toDelete.length} · Missing: ${missing.length}`, 'info');
-    missing.forEach(u => log($('destDelLog'), `MISS  ${u}`, 'skip'));
+    log($('destLog'), `Parsed ${parsed.length} · Found: ${toDelete.length} · Missing: ${missing.length}`, 'info');
+    missing.forEach(u => log($('destLog'), `MISS  ${u}`, 'skip'));
 
-    if (!toDelete.length) return log($('destDelLog'), 'Nothing to delete.', 'info');
+    if (!toDelete.length) return log($('destLog'), 'Nothing to delete.', 'info');
     $('destDelBtn').disabled = true;
     let ok = 0, fail = 0;
     for (const item of toDelete) {
       try {
         await apiInternal(`/links/api/v1/organizations/${destOrgId}/link-pages/${destPageId}/items/${item.id}`, { method: 'DELETE' });
-        log($('destDelLog'), `DEL   ${item.url}`, 'ok'); ok++;
+        log($('destLog'), `DEL   ${item.url}`, 'ok'); ok++;
       } catch (e) {
-        log($('destDelLog'), `FAIL  ${item.url} — ${e.message}${e.status===401?' (JWT expired)':''}`, 'err');
+        log($('destLog'), `FAIL  ${item.url} — ${e.message}${e.status===401?' (JWT expired)':''}`, 'err');
         fail++;
         if (e.status === 401) break;
       }
     }
-    log($('destDelLog'), `Done. Deleted: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
+    log($('destLog'), `Done. Deleted: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
     $('destDelBtn').disabled = false;
     await fetchLoadedDestPage();
     // update cached count
@@ -914,8 +901,9 @@
   });
 
   $('destVerifyBtn').addEventListener('click', () => {
+    clearLog($('destLog'));
     if (!destPageData) return flash($('destVerifyBtn'), 'Load a page first', 'err');
-    const parsed = parseUrlLines($('destVerifyInput').value);
+    const parsed = parseUrlLines($('destInput').value);
     if (!parsed.length) return flash($('destVerifyBtn'), 'No URLs', 'err');
     const existing = new Set((destPageData.items || []).map(i => i.url));
     let found = 0;
