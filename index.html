@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FanStack Link Manager</title>
+<style>
+  :root {
+    --bg: #0f0f10;
+    --panel: #18181b;
+    --panel-2: #1f1f23;
+    --border: #2a2a2f;
+    --text: #e8e6e0;
+    --text-dim: #8b8880;
+    --accent: #e8e6e0;
+    --accent-fg: #0f0f10;
+    --green: #6ee7a0;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --blue: #60a5fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .panel-title {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  input, select, textarea, button {
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--text-dim);
+  }
+  input, select { width: 100%; }
+  textarea {
+    width: 100%;
+    resize: vertical;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  button {
+    cursor: pointer;
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+    font-weight: 500;
+    padding: 10px 16px;
+  }
+  button:hover:not(:disabled) { opacity: 0.9; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.ghost {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border);
+  }
+  button.danger {
+    background: transparent;
+    color: var(--red);
+    border-color: var(--red);
+  }
+  button.danger:hover:not(:disabled) {
+    background: var(--red);
+    color: var(--accent-fg);
+  }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+  .meta {
+    display: flex; gap: 24px; margin-top: 8px; font-size: 13px;
+  }
+  .meta span { color: var(--text-dim); }
+  .meta b { color: var(--text); font-weight: 600; }
+  .links-list {
+    margin-top: 12px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+  }
+  .link-item {
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .link-item:last-child { border-bottom: none; }
+  .link-item.hit { background: rgba(110, 231, 160, 0.12); color: var(--green); }
+  .log {
+    margin-top: 12px;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .log-line.ok { color: var(--green); }
+  .log-line.err { color: var(--red); }
+  .log-line.skip { color: var(--yellow); }
+  .log-line.info { color: var(--text-dim); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: 8px;
+  }
+  .hidden { display: none !important; }
+  .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .verify-summary {
+    margin-top: 12px;
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .verify-summary .stat b { color: var(--text); }
+  .verify-summary .stat.found b { color: var(--green); }
+  .verify-summary .stat.missing b { color: var(--red); }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .top-bar {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
+  }
+  .key-status {
+    font-size: 12px; color: var(--text-dim);
+  }
+  .key-status.ok { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="top-bar">
+    <div>
+      <h1>FanStack Link Manager</h1>
+      <div class="subtitle">Bulk manage links, gates, and verify presence across landing pages.</div>
+    </div>
+    <div class="key-status" id="keyStatus">No API key</div>
+  </div>
+
+  <!-- API KEY -->
+  <div class="panel" id="keyPanel">
+    <div class="panel-title">API Key</div>
+    <label for="apiKey">Enter your FanStack API key (stored in browser only)</label>
+    <div class="row">
+      <input type="password" id="apiKey" placeholder="fsl_..." autocomplete="off">
+      <button id="saveKey">Save</button>
+      <button class="ghost" id="clearKey">Clear</button>
+    </div>
+  </div>
+
+  <!-- PAGE SELECTOR -->
+  <div class="panel hidden" id="pagePanel">
+    <div class="panel-title">Landing Page</div>
+    <div class="row">
+      <select id="pageSelect" style="flex: 1;"></select>
+      <select id="hostSelect" style="width: 220px;"></select>
+      <button class="ghost" id="refreshPages">Refresh</button>
+    </div>
+    <div class="meta" id="pageMeta"></div>
+    <div class="links-list hidden" id="linksList"></div>
+    <div class="actions">
+      <button class="ghost" id="toggleLinks">Show current links</button>
+      <button class="ghost" id="copyLinks">Copy all as text</button>
+    </div>
+  </div>
+
+  <!-- ADD LINKS -->
+  <div class="panel hidden" id="addPanel">
+    <div class="panel-title">Add Links to Selected Page</div>
+    <label for="addInput">Paste links (one per line). Accepts full URLs, host/slug, or just slug.</label>
+    <textarea id="addInput" rows="8" placeholder="https://fanstack.link/summer-sale&#10;fanstack.link/vip-offer&#10;my-slug"></textarea>
+    <div class="actions">
+      <button id="addBtn">Add Links</button>
+      <button class="ghost" id="addDryRun">Dry Run (Preview)</button>
+    </div>
+    <div class="log hidden" id="addLog"></div>
+  </div>
+
+  <!-- DELETE LINKS -->
+  <div class="panel hidden" id="delPanel">
+    <div class="panel-title">Delete Links</div>
+    <label for="delInput">Paste links to delete (one per line). Accepts full URLs, host/slug, or just slug.</label>
+    <textarea id="delInput" rows="8" placeholder="https://fanstack.link/old-slug&#10;fanstack.link/another"></textarea>
+    <div class="actions">
+      <button class="danger" id="delBtn">Delete Links</button>
+    </div>
+    <div class="log hidden" id="delLog"></div>
+  </div>
+
+  <!-- VERIFY LINKS -->
+  <div class="panel hidden" id="verifyPanel">
+    <div class="panel-title">Verify Links</div>
+    <label for="verifyInput">Paste links (one per line). We'll highlight which ones exist on the selected page.</label>
+    <textarea id="verifyInput" rows="8" placeholder="https://fanstack.link/link-a&#10;fanstack.link/link-b"></textarea>
+    <div class="actions">
+      <button id="verifyBtn">Verify</button>
+      <select id="verifyScope" style="width: 220px;">
+        <option value="page">Against selected page</option>
+        <option value="all">Against entire org</option>
+      </select>
+    </div>
+    <div class="verify-summary hidden" id="verifySummary"></div>
+    <div class="links-list hidden" id="verifyResults"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const API_BASE = '/api';
+  const KEY_STORAGE = 'fanstack_api_key';
+  const HOST_STORAGE = 'fanstack_last_host';
+  const PAGE_STORAGE = 'fanstack_last_page';
+
+  let apiKey = localStorage.getItem(KEY_STORAGE) || '';
+  let pages = [];
+  let domains = [];
+  let currentLinks = [];
+  let currentPageId = null;
+  let currentHost = null;
+
+  // ---- DOM refs ----
+  const $ = (id) => document.getElementById(id);
+  const keyInput = $('apiKey');
+  const keyStatus = $('keyStatus');
+  const pagePanel = $('pagePanel');
+  const addPanel = $('addPanel');
+  const delPanel = $('delPanel');
+  const verifyPanel = $('verifyPanel');
+  const pageSelect = $('pageSelect');
+  const hostSelect = $('hostSelect');
+  const pageMeta = $('pageMeta');
+  const linksList = $('linksList');
+  const addLog = $('addLog');
+  const delLog = $('delLog');
+  const verifySummary = $('verifySummary');
+  const verifyResults = $('verifyResults');
+
+  // ---- API helpers ----
+  async function api(path, opts = {}) {
+    const res = await fetch(API_BASE + path, {
+      ...opts,
+      headers: {
+        'X-Api-Key': apiKey,
+        ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(opts.headers || {})
+      }
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+    if (!res.ok) {
+      const err = new Error(data?.error || `HTTP ${res.status}`);
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return data;
+  }
+
+  async function fetchAllPaged(path) {
+    let items = [];
+    let cursor = null;
+    do {
+      const q = new URLSearchParams({ limit: '100' });
+      if (cursor) q.set('cursor', cursor);
+      const sep = path.includes('?') ? '&' : '?';
+      const data = await api(path + sep + q.toString());
+      items = items.concat(data.items || []);
+      cursor = data.nextCursor || null;
+    } while (cursor);
+    return items;
+  }
+
+  // ---- Link parsing ----
+  function parseLink(line, defaultHost) {
+    line = line.trim();
+    if (!line) return null;
+    // strip protocol
+    let s = line.replace(/^https?:\/\//i, '').replace(/^\/+/, '');
+    // strip query/hash
+    s = s.split('?')[0].split('#')[0].replace(/\/+$/, '');
+    if (s.includes('/')) {
+      const [host, ...rest] = s.split('/');
+      const slug = rest.join('/');
+      if (!slug) return null;
+      return { host, slug, id: `${host}/${slug}` };
+    }
+    // just a slug
+    if (!defaultHost) return null;
+    return { host: defaultHost, slug: s, id: `${defaultHost}/${s}` };
+  }
+
+  function parseLines(text, defaultHost) {
+    const seen = new Set();
+    const out = [];
+    for (const line of text.split(/\r?\n/)) {
+      const p = parseLink(line, defaultHost);
+      if (!p) continue;
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      out.push(p);
+    }
+    return out;
+  }
+
+  // ---- Log ----
+  function log(el, msg, cls = '') {
+    el.classList.remove('hidden');
+    const line = document.createElement('div');
+    line.className = 'log-line ' + cls;
+    line.textContent = msg;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+  function clearLog(el) { el.innerHTML = ''; el.classList.add('hidden'); }
+
+  // ---- Key handling ----
+  function updateKeyStatus() {
+    if (apiKey) {
+      keyStatus.textContent = 'API key loaded (' + apiKey.slice(0, 6) + '…)';
+      keyStatus.classList.add('ok');
+      keyInput.value = apiKey;
+      init();
+    } else {
+      keyStatus.textContent = 'No API key';
+      keyStatus.classList.remove('ok');
+      pagePanel.classList.add('hidden');
+      addPanel.classList.add('hidden');
+      delPanel.classList.add('hidden');
+      verifyPanel.classList.add('hidden');
+    }
+  }
+
+  $('saveKey').addEventListener('click', () => {
+    const v = keyInput.value.trim();
+    if (!v) return alert('Enter an API key');
+    apiKey = v;
+    localStorage.setItem(KEY_STORAGE, v);
+    updateKeyStatus();
+  });
+
+  $('clearKey').addEventListener('click', () => {
+    if (!confirm('Clear stored API key?')) return;
+    apiKey = '';
+    localStorage.removeItem(KEY_STORAGE);
+    keyInput.value = '';
+    updateKeyStatus();
+  });
+
+  // ---- Init: load domains + pages ----
+  async function init() {
+    try {
+      pageSelect.innerHTML = '<option>Loading...</option>';
+      hostSelect.innerHTML = '<option>Loading...</option>';
+      [domains, pages] = await Promise.all([
+        fetchAllPaged('/domains'),
+        fetchAllPaged('/pages')
+      ]);
+      populateHosts();
+      populatePages();
+      pagePanel.classList.remove('hidden');
+      addPanel.classList.remove('hidden');
+      delPanel.classList.remove('hidden');
+      verifyPanel.classList.remove('hidden');
+      await onPageChange();
+    } catch (e) {
+      alert('Failed to load: ' + e.message + '\n\nCheck your API key. If you see a CORS error, the API must be called from an allowed origin.');
+    }
+  }
+
+  function populateHosts() {
+    hostSelect.innerHTML = '';
+    domains.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.host;
+      opt.textContent = d.host + (d.verified ? '' : ' (unverified)');
+      hostSelect.appendChild(opt);
+    });
+    const savedHost = localStorage.getItem(HOST_STORAGE);
+    if (savedHost && domains.some(d => d.host === savedHost)) {
+      hostSelect.value = savedHost;
+    }
+    currentHost = hostSelect.value;
+  }
+
+  function populatePages() {
+    pageSelect.innerHTML = '';
+    pages.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    pages.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.name || '(unnamed)'} — ${p.publishedLinkCount} link${p.publishedLinkCount === 1 ? '' : 's'}`;
+      pageSelect.appendChild(opt);
+    });
+    const savedPage = localStorage.getItem(PAGE_STORAGE);
+    if (savedPage && pages.some(p => p.id === savedPage)) {
+      pageSelect.value = savedPage;
+    }
+    currentPageId = pageSelect.value;
+  }
+
+  $('refreshPages').addEventListener('click', () => init());
+  pageSelect.addEventListener('change', onPageChange);
+  hostSelect.addEventListener('change', () => {
+    currentHost = hostSelect.value;
+    localStorage.setItem(HOST_STORAGE, currentHost);
+  });
+
+  async function onPageChange() {
+    currentPageId = pageSelect.value;
+    localStorage.setItem(PAGE_STORAGE, currentPageId);
+    pageMeta.innerHTML = '<span>Loading links…</span>';
+    linksList.innerHTML = '';
+    linksList.classList.add('hidden');
+    try {
+      const all = await fetchAllPaged('/links');
+      currentLinks = all.filter(l => l.linkPageId === currentPageId ||
+                                     (l.linkPageIds && l.linkPageIds.includes(currentPageId)));
+      const p = pages.find(x => x.id === currentPageId);
+      pageMeta.innerHTML = `
+        <span>Page: <b>${escapeHtml(p?.name || '')}</b></span>
+        <span>Links on this page: <b>${currentLinks.length}</b></span>
+        <span>Total in org (all pages): <b>${all.length}</b></span>
+      `;
+      renderLinksList();
+    } catch (e) {
+      pageMeta.innerHTML = `<span style="color:var(--red)">Failed: ${escapeHtml(e.message)}</span>`;
+    }
+  }
+
+  function renderLinksList() {
+    linksList.innerHTML = '';
+    currentLinks
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .forEach(l => {
+        const div = document.createElement('div');
+        div.className = 'link-item';
+        div.innerHTML = `<a href="${escapeAttr(l.fullUrl)}" target="_blank" rel="noopener">${escapeHtml(l.id)}</a>
+                         <span style="color:var(--text-dim)">${l.isActive ? '' : 'inactive'}</span>`;
+        linksList.appendChild(div);
+      });
+  }
+
+  $('toggleLinks').addEventListener('click', () => {
+    linksList.classList.toggle('hidden');
+    $('toggleLinks').textContent = linksList.classList.contains('hidden') ? 'Show current links' : 'Hide current links';
+  });
+
+  $('copyLinks').addEventListener('click', () => {
+    const text = currentLinks.map(l => l.fullUrl).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      $('copyLinks').textContent = 'Copied!';
+      setTimeout(() => $('copyLinks').textContent = 'Copy all as text', 1200);
+    });
+  });
+
+  // ---- ADD ----
+  async function addFlow(dryRun) {
+    clearLog(addLog);
+    const raw = $('addInput').value;
+    const parsed = parseLines(raw, currentHost);
+    if (!parsed.length) { log(addLog, 'No valid links parsed.', 'err'); return; }
+
+    const existing = new Set(currentLinks.map(l => l.id));
+    const toAdd = [];
+    const dupes = [];
+    for (const p of parsed) {
+      if (existing.has(p.id)) dupes.push(p);
+      else toAdd.push(p);
+    }
+
+    log(addLog, `Parsed ${parsed.length} · Duplicates (already on this page): ${dupes.length} · New to add: ${toAdd.length}`, 'info');
+    dupes.forEach(d => log(addLog, `SKIP  ${d.id} (already exists on page)`, 'skip'));
+
+    if (dryRun) {
+      toAdd.forEach(t => log(addLog, `WOULD ADD  ${t.id}`, 'info'));
+      log(addLog, 'Dry run complete.', 'info');
+      return;
+    }
+
+    if (!toAdd.length) { log(addLog, 'Nothing to add.', 'info'); return; }
+    if (!confirm(`Add ${toAdd.length} link(s) to selected page?`)) return;
+
+    $('addBtn').disabled = true;
+    let ok = 0, fail = 0;
+    for (const p of toAdd) {
+      try {
+        await api('/links', {
+          method: 'POST',
+          body: JSON.stringify({ host: p.host, slug: p.slug, pageId: currentPageId })
+        });
+        log(addLog, `OK    ${p.id}`, 'ok');
+        ok++;
+      } catch (e) {
+        log(addLog, `FAIL  ${p.id} — ${e.message}`, 'err');
+        fail++;
+      }
+    }
+    log(addLog, `Done. Added: ${ok} · Failed: ${fail}`, ok ? 'ok' : 'err');
+    $('addBtn').disabled = false;
+    await onPageChange();
+  }
+
+  $('addBtn').addEventListener('click', () => addFlow(false));
+  $('addDryRun').addEventListener('click', () => addFlow(true));
+
+  // ---- DELETE ----
+  $('delBtn').addEventListener('click', async () => {
+    clearLog(delLog);
+    const raw = $('delInput').value;
+    const parsed = parseLines(raw, currentHost);
+    if (!parsed.length) { log(delLog, 'No valid links parsed.', 'err'); return; }
+
+    log(delLog, `Parsed ${parsed.length} link(s) to delete.`, 'info');
+    if (!confirm(`Delete ${parsed.length} link(s)? This cannot be undone.`)) return;
+
+    $('delBtn').disabled = true;
+    let ok = 0, fail = 0, missing = 0;
+    for (const p of parsed) {
+      try {
+        await api(`/links/${encodeURIComponent(p.host)}/${encodeURIComponent(p.slug)}`, { method: 'DELETE' });
+        log(delLog, `DEL   ${p.id}`, 'ok');
+        ok++;
+      } catch (e) {
+        if (e.status === 404) {
+          log(delLog, `MISS  ${p.id} (not found)`, 'skip');
+          missing++;
+        } else {
+          log(delLog, `FAIL  ${p.id} — ${e.message}`, 'err');
+          fail++;
+        }
+      }
+    }
+    log(delLog, `Done. Deleted: ${ok} · Not found: ${missing} · Failed: ${fail}`, ok ? 'ok' : 'err');
+    $('delBtn').disabled = false;
+    await onPageChange();
+  });
+
+  // ---- VERIFY ----
+  $('verifyBtn').addEventListener('click', async () => {
+    verifyResults.innerHTML = '';
+    verifyResults.classList.add('hidden');
+    verifySummary.classList.add('hidden');
+
+    const raw = $('verifyInput').value;
+    const parsed = parseLines(raw, currentHost);
+    if (!parsed.length) return alert('No valid links parsed.');
+
+    const scope = $('verifyScope').value;
+    $('verifyBtn').disabled = true;
+    try {
+      let pool;
+      if (scope === 'page') {
+        pool = new Set(currentLinks.map(l => l.id));
+      } else {
+        const all = await fetchAllPaged('/links');
+        pool = new Set(all.map(l => l.id));
+      }
+      let found = 0;
+      parsed.forEach(p => {
+        const div = document.createElement('div');
+        const hit = pool.has(p.id);
+        if (hit) found++;
+        div.className = 'link-item' + (hit ? ' hit' : '');
+        div.innerHTML = `<span>${escapeHtml(p.id)}</span>
+                         <span>${hit ? '✓ found' : '× missing'}</span>`;
+        verifyResults.appendChild(div);
+      });
+      verifyResults.classList.remove('hidden');
+      verifySummary.classList.remove('hidden');
+      verifySummary.innerHTML = `
+        <div class="stat">Total: <b>${parsed.length}</b></div>
+        <div class="stat found">Found: <b>${found}</b></div>
+        <div class="stat missing">Missing: <b>${parsed.length - found}</b></div>
+        <div class="stat">Scope: <b>${scope === 'page' ? 'selected page' : 'entire org'}</b></div>
+      `;
+    } catch (e) {
+      alert('Verify failed: ' + e.message);
+    }
+    $('verifyBtn').disabled = false;
+  });
+
+  // ---- utils ----
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+
+  // ---- boot ----
+  updateKeyStatus();
+})();
+</script>
+</body>
+</html>
